@@ -1,0 +1,140 @@
+#!/bin/bash
+
+source ./config.sh
+export ENVIRONMENT="$1"
+
+if [[ ! "$APPLICATION" =~ ^[A-Z][a-zA-Z0-9]*$ ]]
+then
+
+  echo "ERROR: APPLICATION must start with an uppercase letter and contain only letters and numbers"
+  exit 1
+
+fi
+
+if [[ ! "$ENVIRONMENT" =~ ^[a-z][a-z0-9]*$ ]]
+then
+
+  echo "ERROR: ENVIRONMENT (\$1) must start with an lowercase letter and contain only lowercase letters and numbers"
+  exit 1
+
+fi
+
+# if [[ ! "$GITHUB_REPO" =~ ^https?:\/\/[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)$ ]]
+# then
+
+#   echo "ERROR: GITHUB_REPO must be a valid HTTPS URL pointing to a GitHub repository"
+#   exit 1
+
+# fi
+
+STACK_NAME="$APPLICATION-$ENVIRONMENT"
+
+if ! [ -x "$(command -v aws)" ]
+then
+
+  echo "ERROR: You must install the awscli"
+  echo "https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html"
+  exit 1
+
+fi
+
+STACK_DESCRIPTION=$(aws cloudformation describe-stacks --stack-name $STACK_NAME 2>&1)
+
+if [[ $STACK_DESCRIPTION == *"locate credentials"* || $STACK_DESCRIPTION == *"specify a region"* ]]
+then
+
+  echo "ERROR: You must set your AWS credentials/profile and default region via Environment Variables"
+  echo "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html"
+  exit 1
+
+fi
+
+if [[ $STACK_DESCRIPTION != *"ValidationError"* ]]
+then
+
+  echo "$STACK_NAME exists, no need to create/build..."
+  
+else
+
+  echo "Initializing $STACK_NAME CloudFormation Stack..."
+  
+  aws cloudformation deploy \
+    --stack-name "$STACK_NAME" \
+    --template-file ./build/init.yml \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+    --parameter-overrides \
+      "Application=$APPLICATION" \
+      "Environment=$ENVIRONMENT" \
+      "GitHubRepo=$GITHUB_REPO" \
+      "AdminEmail=$ADMIN_EMAIL" \
+      "AdminPhone=$ADMIN_PHONE" \
+    --tags \
+      "Application=$APPLICATION" \
+      "Environment=$ENVIRONMENT" \
+
+  if [ "$ENVIRONMENT" == "master" ]
+  then
+  
+    echo "Enabling Termination Protection for master branch stack $STACK_NAME"
+    
+    aws cloudformation update-termination-protection \
+      --stack-name "$STACK_NAME" \
+      --enable-termination-protection > /dev/null
+  
+  fi
+
+  BUILD_PROJECT=$(aws cloudformation describe-stacks \
+    --stack-name "$STACK_NAME" \
+    --query 'Stacks[0].Outputs[?OutputKey==`BuildProject`].OutputValue' \
+    --output text)
+  
+  echo "Setting GitHub branch filter for CodeBuild Project $BUILD_PROJECT..."
+  
+  aws codebuild update-webhook \
+    --project-name "$BUILD_PROJECT" \
+    --branch-filter "$ENVIRONMENT" \
+    --rotate-secret > /dev/null
+  
+  echo "Building full application stack via AWS CodeBuild..."
+  
+  BUILD_ID=$(aws codebuild start-build \
+    --project-name "$BUILD_PROJECT" \
+    --source-version "$ENVIRONMENT" \
+    --query 'build.id' \
+    --output text)
+
+  echo "You can watch progress at the following URI:"
+  echo "https://console.aws.amazon.com/codesuite/codebuild/projects/$BUILD_PROJECT/build/$BUILD_ID/log"
+
+  while [ true ]
+  do
+  
+    sleep 10
+    
+    BUILD_STATUS=$(aws codebuild batch-get-builds \
+    --ids "$BUILD_ID" \
+    --query 'builds[0].buildStatus' \
+    --output text)
+    
+    if [ "$BUILD_STATUS" != "IN_PROGRESS" ]
+    then
+    
+      break
+    
+    fi
+  
+  done
+  
+  if [ "$BUILD_STATUS" != "SUCCEEDED" ]
+  then
+  
+    echo "There was a problem with the build! Check the console for logs..."
+    exit 1
+  
+  else
+  
+    echo "$STACK_NAME Fully Initialized!"
+    
+  fi
+
+fi
