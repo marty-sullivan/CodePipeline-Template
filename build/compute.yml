@@ -26,6 +26,11 @@ Outputs:
   
   BatchInstanceProfile:
     Value: !Sub '${BatchInstanceProfile.Arn}'
+  
+  # EFS
+  
+  FileSystem:
+    Value: !Sub '${FileSystem}.efs.${AWS::Region}.${AWS::URLSuffix}'
 
   # VPC
 
@@ -120,6 +125,71 @@ Resources:
       Roles:
         - !Sub '${BatchInstanceRole}'
 
+  # EFS
+  
+  FileSystem:
+    Type: 'AWS::EFS::FileSystem'
+    Properties:
+      PerformanceMode: 'generalPurpose'
+      ThroughputMode: 'bursting'
+      FileSystemTags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-filesystem'
+        - Key: 'Name'
+          Value: !Sub '${Application}-${Environment}'
+
+  MountTargetA:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      FileSystemId: !Sub '${FileSystem}'
+      SubnetId: !Sub '${SubnetA}'
+      SecurityGroups:
+        - !Sub '${Vpc.DefaultSecurityGroup}'
+      
+  MountTargetB:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      FileSystemId: !Sub '${FileSystem}'
+      SubnetId: !Sub '${SubnetB}'
+      SecurityGroups:
+        - !Sub '${Vpc.DefaultSecurityGroup}'
+      
+  MountTargetC:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      FileSystemId: !Sub '${FileSystem}'
+      SubnetId: !Sub '${SubnetC}'
+      SecurityGroups:
+        - !Sub '${Vpc.DefaultSecurityGroup}'
+      
+  MountTargetD:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      FileSystemId: !Sub '${FileSystem}'
+      SubnetId: !Sub '${SubnetD}'
+      SecurityGroups:
+        - !Sub '${Vpc.DefaultSecurityGroup}'
+      
+  MountTargetE:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      FileSystemId: !Sub '${FileSystem}'
+      SubnetId: !Sub '${SubnetE}'
+      SecurityGroups:
+        - !Sub '${Vpc.DefaultSecurityGroup}'
+      
+  MountTargetF:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      FileSystemId: !Sub '${FileSystem}'
+      SubnetId: !Sub '${SubnetF}'
+      SecurityGroups:
+        - !Sub '${Vpc.DefaultSecurityGroup}'
+      
   # VPC
 
   Vpc:
