@@ -6,14 +6,14 @@ cp -LR $CODEBUILD_SRC_DIR/containers $CODEBUILD_SRC_DIR/build/
 for dir in $CODEBUILD_SRC_DIR/build/containers/*
 do
 
-  if [[ $dir == _* ]]
+  CONTAINER_NAME=$(basename $dir)
+  
+  if [[ $CONTAINER_NAME == _* ]]
   then
   
     continue
   
   fi
-  
-  CONTAINER_NAME=$(basename $dir)
   
   CONTAINER_REPO=$(aws cloudformation describe-stacks \
     --stack-name "$APPLICATION-$ENVIRONMENT" \
