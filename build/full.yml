@@ -50,23 +50,42 @@ Globals:
         
 Resources:
 
+  # Batch 
+
   # Functions
   
-  NewFunction:
-    Type: 'AWS::Serverless::Function'
+  # Function:
+  #   Type: 'AWS::Serverless::Function'
+  #   Properties:
+  #     CodeUri: './lambdas/'
+  #     Tags:
+  #       Resource: !Sub '${Application}--function'
+  #     Policies:
+  #       - 'AWSLambdaBasicExecutionRole'
+  #       - Version: '2012-10-17'
+  #         Statement:
+  #           - Effect: 'Allow'
+  #             Action:
+  #               - ''
+  #             Resource:
+  #               - !Sub ''
+
+  # VPC
+  
+  VpcStack:
+    Type: 'AWS::CloudFormation::Stack'
     Properties:
-      CodeUri: './lambdas/'
+      TemplateURL: './vpc.yml'
+      Parameters:
+        Application: !Sub '${Application}'
+        Environment: !Sub '${Environment}'
       Tags:
-        Resource: !Sub '${Application}--function'
-      Policies:
-        - 'AWSLambdaBasicExecutionRole'
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: 'Allow'
-              Action:
-                - ''
-              Resource:
-                - !Sub ''
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-vpc-stack'
 
   # CodeBuild Project
 

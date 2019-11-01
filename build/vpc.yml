@@ -1,0 +1,250 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Standard VPC Template'
+
+Parameters:
+  
+  Application:
+    Description: 'Name of the application for billing'
+    Type: 'String'
+    
+  Environment:
+    Description: 'Name of the deployment environment'
+    Type: 'String'
+
+Outputs:
+
+  Vpc:
+    Value: !Sub '${Vpc}'
+  
+  SubnetA:
+    Value: !Sub '${SubnetA}'
+
+  SubnetB:
+    Value: !Sub '${SubnetB}'
+
+  SubnetC:
+    Value: !Sub '${SubnetC}'
+
+  SubnetD:
+    Value: !Sub '${SubnetD}'
+
+  SubnetE:
+    Value: !Sub '${SubnetE}'
+
+  SubnetF:
+    Value: !Sub '${SubnetF}'
+
+Resources:
+
+  Vpc:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: '10.0.0.0/16'
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-vpc'
+        - Key: 'Name'
+          Value: !Sub '${Application}-${Environment}'
+  
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-igw'
+        - Key: 'Name'
+          Value: !Sub '${Application}-${Environment}'
+  
+  InternetGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      InternetGatewayId: !Sub '${InternetGateway}'
+      VpcId: !Sub '${Vpc}'
+
+  RouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Sub '${Vpc}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-rtb'
+        - Key: 'Name'
+          Value: !Sub '${Application}-${Environment}'
+  
+  InternetRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Sub '${InternetGateway}'
+      RouteTableId: !Sub '${RouteTable}'
+  
+  SubnetA:
+    Type: 'AWS::EC2::Subnet'
+    Properties: 
+      AvailabilityZone: 
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ''
+      CidrBlock: '10.0.0.0/19'
+      MapPublicIpOnLaunch: true
+      VpcId: !Sub '${Vpc}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-a'
+        - Key: 'Name'
+          Value: !Sub '${Application}-${Environment}-a'
+  
+  SubnetRouteA:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Sub '${RouteTable}'
+      SubnetId: !Sub '${SubnetA}'
+  
+  SubnetB:
+    Type: 'AWS::EC2::Subnet'
+    Properties: 
+      AvailabilityZone: 
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ''
+      CidrBlock: '10.0.32.0/19'
+      MapPublicIpOnLaunch: true
+      VpcId: !Sub '${Vpc}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-subnet-b'
+        - Key: 'Name'
+          Value: !Sub '${Application}-${Environment}-b'
+  
+  SubnetRouteB:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Sub '${RouteTable}'
+      SubnetId: !Sub '${SubnetB}'
+  
+  SubnetC:
+    Type: 'AWS::EC2::Subnet'
+    Properties: 
+      AvailabilityZone: 
+        Fn::Select:
+          - 2
+          - Fn::GetAZs: ''
+      CidrBlock: '10.0.64.0/19'
+      MapPublicIpOnLaunch: true
+      VpcId: !Sub '${Vpc}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-subnet-c'
+        - Key: 'Name'
+          Value: !Sub '${Application}-${Environment}-c'
+  
+  SubnetRouteC:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Sub '${RouteTable}'
+      SubnetId: !Sub '${SubnetC}'
+  
+  SubnetD:
+    Type: 'AWS::EC2::Subnet'
+    Properties: 
+      AvailabilityZone: 
+        Fn::Select:
+          - 3
+          - Fn::GetAZs: ''
+      CidrBlock: '10.0.96.0/19'
+      MapPublicIpOnLaunch: true
+      VpcId: !Sub '${Vpc}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-subnet-d'
+        - Key: 'Name'
+          Value: !Sub '${Application}-${Environment}-d'
+  
+  SubnetRouteD:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Sub '${RouteTable}'
+      SubnetId: !Sub '${SubnetD}'
+  
+  SubnetE:
+    Type: 'AWS::EC2::Subnet'
+    Properties: 
+      AvailabilityZone: 
+        Fn::Select:
+          - 4
+          - Fn::GetAZs: ''
+      CidrBlock: '10.0.128.0/19'
+      MapPublicIpOnLaunch: true
+      VpcId: !Sub '${Vpc}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-subnet-e'
+        - Key: 'Name'
+          Value: !Sub '${Application}-${Environment}-e'
+  
+  SubnetRouteE:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Sub '${RouteTable}'
+      SubnetId: !Sub '${SubnetE}'
+  
+  SubnetF:
+    Type: 'AWS::EC2::Subnet'
+    Properties: 
+      AvailabilityZone: 
+        Fn::Select:
+          - 5
+          - Fn::GetAZs: ''
+      CidrBlock: '10.0.160.0/19'
+      MapPublicIpOnLaunch: true
+      VpcId: !Sub '${Vpc}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-subnet-f'
+        - Key: 'Name'
+          Value: !Sub '${Application}-${Environment}-f'
+  
+  SubnetRouteF:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Sub '${RouteTable}'
+      SubnetId: !Sub '${SubnetF}'
+  
