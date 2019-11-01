@@ -13,6 +13,22 @@ Parameters:
 
 Outputs:
 
+  # Batch
+  
+  BatchServiceRole:
+    Value: !Sub '${BatchServiceRole.Arn}'
+  
+  SpotFleetServiceRole:
+    Value: !Sub '${SpotFleetServiceRole.Arn}'
+  
+  BatchInstanceRole:
+    Value: !Sub '${BatchInstanceRole.Arn}'
+  
+  BatchInstanceProfile:
+    Value: !Sub '${BatchInstanceProfile.Arn}'
+
+  # VPC
+
   Vpc:
     Value: !Sub '${Vpc}'
   
@@ -35,6 +51,76 @@ Outputs:
     Value: !Sub '${SubnetF}'
 
 Resources:
+
+  # Batch Roles
+
+  BatchServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action: 'sts:AssumeRole'
+            Principal:
+              Service: !Sub 'batch.${AWS::URLSuffix}'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBatchServiceRole'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-batch-instance-role'
+
+  SpotFleetServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action: 'sts:AssumeRole'
+            Principal:
+              Service: !Sub 'spotfleet.${AWS::URLSuffix}'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-batch-instance-role'
+
+  BatchInstanceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action: 'sts:AssumeRole'
+            Principal:
+              Service: !Sub 'ec2.${AWS::URLSuffix}'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-batch-instance-role'
+
+  BatchInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Roles:
+        - !Sub '${BatchInstanceRole}'
+
+  # VPC
 
   Vpc:
     Type: 'AWS::EC2::VPC'
