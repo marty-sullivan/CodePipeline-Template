@@ -10,3 +10,4 @@ phases:
     commands:
       - '$CODEBUILD_SRC_DIR/build/lambdas.sh'
       - '$CODEBUILD_SRC_DIR/build/cfn.sh'
+      - '$CODEBUILD_SRC_DIR/build/containers.sh'
