@@ -13,7 +13,7 @@ Parameters:
 
 Outputs:
 
-  # Batch Roles
+  # Batch Environment
   
   BatchServiceRole:
     Value: !Sub '${BatchServiceRole.Arn}'
@@ -26,6 +26,9 @@ Outputs:
   
   BatchInstanceProfile:
     Value: !Sub '${BatchInstanceProfile.Arn}'
+  
+  BatchJobQueue:
+    Value: !Sub '${BatchJobQueue}'
   
   # EFS
   
