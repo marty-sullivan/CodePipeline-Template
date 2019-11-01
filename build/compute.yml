@@ -13,7 +13,7 @@ Parameters:
 
 Outputs:
 
-  # Batch
+  # Batch Roles
   
   BatchServiceRole:
     Value: !Sub '${BatchServiceRole.Arn}'
@@ -124,6 +124,46 @@ Resources:
     Properties:
       Roles:
         - !Sub '${BatchInstanceRole}'
+
+  # Batch Environment
+  
+  BatchComputeEnvironment:
+    Type: 'AWS::Batch::ComputeEnvironment'
+    Properties:
+      State: 'ENABLED'
+      Type: 'MANAGED'
+      ServiceRole: !Sub '${BatchServiceRole.Arn}'
+      ComputeResources:
+        Type: 'SPOT'
+        DesiredvCpus: 0
+        MaxvCpus: 10
+        MinvCpus: 0
+        InstanceRole: !Sub '${BatchInstanceProfile.Arn}'
+        SpotIamFleetRole: !Sub '${SpotFleetServiceRole.Arn}'
+        InstanceTypes:
+          - 'm3.medium'
+        SecurityGroupIds:
+          - !Sub '${Vpc.DefaultSecurityGroup}'
+        Subnets:
+          - !Sub '${SubnetA}'
+          - !Sub '${SubnetB}'
+          - !Sub '${SubnetC}'
+          - !Sub '${SubnetD}'
+          - !Sub '${SubnetE}'
+          - !Sub '${SubnetF}'
+        Tags: 
+          Application: !Sub '${Application}'
+          Environment: !Sub '${Environment}'
+          Resource: !Sub '${Application}-${Environment}-batch-compute'
+
+  BatchJobQueue:
+    Type: 'AWS::Batch::JobQueue'
+    Properties:
+      State: 'ENABLED'
+      Priority: 100
+      ComputeEnvironmentOrder:
+        - ComputeEnvironment: !Sub '${BatchComputeEnvironment}'
+          Order: 1
 
   # EFS
   
