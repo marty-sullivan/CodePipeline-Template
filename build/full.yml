@@ -50,59 +50,12 @@ Globals:
         
 Resources:
 
-  # Batch 
-
-  BatchServiceRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Action: 'sts:AssumeRole'
-            Principal:
-              Service: !Sub 'batch.${AWS::URLSuffix}'
-      ManagedPolicyArns:
-        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBatchServiceRole'
-
-  SpotFleetServiceRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Action: 'sts:AssumeRole'
-            Principal:
-              Service: !Sub 'spotfleet.${AWS::URLSuffix}'
-      ManagedPolicyArns:
-        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole'
-
-  BatchInstanceRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Action: 'sts:AssumeRole'
-            Principal:
-              Service: !Sub 'ec2.${AWS::URLSuffix}'
-      ManagedPolicyArns:
-        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'
-
-  BatchInstanceProfile:
-    Type: 'AWS::IAM::InstanceProfile'
-    Properties:
-      Roles:
-        - !Sub '${BatchInstanceRole}'
-
   # Containers
   
-  ContainerRepo:
-    Type: 'AWS::ECR::Repository'
-    Properties:
-      RepositoryPolicyText
+  # ContainerRepo:
+  #   Type: 'AWS::ECR::Repository'
+  #   Properties:
+  #     RepositoryPolicyText
 
   # Functions
   
