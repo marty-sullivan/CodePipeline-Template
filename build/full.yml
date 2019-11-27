@@ -37,6 +37,9 @@ Outputs:
 
   # Web
   
+  Api:
+    Value: !Sub '${Api}'
+  
   WebBucket:
     Value: !Sub '${WebStack.Outputs.WebBucket}'
 
