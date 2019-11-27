@@ -194,13 +194,13 @@ Resources:
       CodeUri: './lambdas/example'
       Tags:
         Resource: !Sub '${Application}-example-function'
-      # Events:
-      #   ApiExampleGetResource:
-      #     Type: 'Api'
-      #     Properties:
-      #       Path: '/example'
-      #       Method: 'GET'
-      #       RestApiId: !Sub '${Api}'
+      Events:
+        ApiExampleGetResource:
+          Type: 'Api'
+          Properties:
+            Path: '/example'
+            Method: 'GET'
+            RestApiId: !Sub '${Api}'
       Policies:
         - 'AWSLambdaBasicExecutionRole'
         # - Version: '2012-10-17'
