@@ -12,6 +12,10 @@ Parameters:
     Description: 'Name of the deployment environment'
     Type: 'String'
     
+  DomainName:
+    Description: 'The base domain name for the website'
+    Type: 'String'
+    
   GitHubRepo:
     Description: 'The GitHub repository for this application'
     Type: 'String'
@@ -22,6 +26,11 @@ Parameters:
   
   AdminPhone:
     Description: 'Mobile phone to which administrative alerts are sent via SMS'
+    Type: 'String'
+    
+  CloudFrontHostedZone:
+    Default: 'Z2FDTNDATAQYW2'
+    Description: 'The Hosted Zone that the CloudFront service uses'
     Type: 'String'
 
 Outputs:
@@ -44,7 +53,7 @@ Globals:
   Function:
     Handler: 'entry.lambda_handler'
     MemorySize: 128
-    Runtime: 'python3.7'
+    Runtime: 'python3.8'
     Timeout: 900
     Tags:
       Application: !Sub '${Application}'
@@ -149,23 +158,58 @@ Resources:
       RetryStrategy:
         Attempts: 2
 
+  # Api
+  
+  Api:
+    Type: 'AWS::Serverless::Api'
+    Properties:
+      EndpointConfiguration: 'REGIONAL'
+      StageName: !Sub '${Environment}'
+      DefinitionBody:
+        swagger: 2.0
+        info:
+          title: !Sub '${Application}-${Environment}'
+        securityDefinitions:
+          api_key:
+            type: 'apiKey'
+            name: 'x-api-key'
+            in: 'header'
+        paths:
+          '/example':
+            get:
+              # security:
+              #   - api_key: []
+              x-amazon-apigateway-integration:
+                type: 'aws_proxy'
+                httpMethod: 'POST'
+                responses: { }
+                uri:
+                  !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ExampleFunction.Arn}/invocations'
+
   # Functions
   
-  # ExampleFunction:
-  #   Type: 'AWS::Serverless::Function'
-  #   Properties:
-  #     CodeUri: './lambdas/'
-  #     Tags:
-  #       Resource: !Sub '${Application}--function'
-  #     Policies:
-  #       - 'AWSLambdaBasicExecutionRole'
-  #       - Version: '2012-10-17'
-  #         Statement:
-  #           - Effect: 'Allow'
-  #             Action:
-  #               - ''
-  #             Resource:
-  #               - !Sub ''
+  ExampleFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      CodeUri: './lambdas/example'
+      Tags:
+        Resource: !Sub '${Application}-example-function'
+      Events:
+        ApiExampleGetResource:
+          Type: 'Api'
+          Properties:
+            Path: '/example'
+            Method: 'GET'
+            RestApiId: !Sub '${Api}'
+      Policies:
+        - 'AWSLambdaBasicExecutionRole'
+        # - Version: '2012-10-17'
+        #   Statement:
+        #     - Effect: 'Allow'
+        #       Action:
+        #         - ''
+        #       Resource:
+        #         - !Sub ''
 
   # Compute
   
