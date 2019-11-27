@@ -32,8 +32,8 @@ Outputs:
 
   # Container Repositories
   
-  ExampleContainerRepo:
-    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${ExampleContainerRepo}'
+  # ExampleContainerRepo:
+  #   Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${ExampleContainerRepo}'
 
   # Build Project
 
