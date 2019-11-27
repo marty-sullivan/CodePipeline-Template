@@ -1,0 +1,207 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Standard Web Template'
+
+Parameters:
+  
+  Application:
+    Description: 'Name of the application for billing'
+    Type: 'String'
+    
+  Environment:
+    Description: 'Name of the deployment environment'
+    Type: 'String'
+  
+  DomainName:
+    Description: 'The base domain name for the website'
+    Type: 'String'
+  
+  Api:
+    Description: 'The API Gateway ID'
+    Type: 'String'
+    
+  CloudFrontHostedZone:
+    Default: 'Z2FDTNDATAQYW2'
+    Description: 'The Hosted Zone that the CloudFront service uses'
+    Type: 'String'
+
+Resources:
+
+  Certificate:
+    Type: 'AWS::CertificateManager::Certificate'
+    Properties:
+      DomainName: !Sub '${DomainName}'
+      ValidationMethod: 'DNS'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-certificate'
+  
+  ApiDomain:
+    Type: 'AWS::ApiGateway::DomainName'
+    Properties:
+      DomainName: !Sub '${DomainName}'
+      RegionalCertificateArn: !Sub '${Certificate}'
+      EndpointConfiguration:
+        Types:
+          - 'REGIONAL'
+  
+  ApiDomainMapping:
+    Type: 'AWS::ApiGateway::BasePathMapping'
+    Properties:
+      DomainName: !Sub '${ApiDomain}'
+      RestApiId: !Sub '${Api}'
+  
+  HostedZone:
+    Type: 'AWS::Route53::HostedZone'
+    Properties:
+      Name: !Sub '${DomainName}'
+      HostedZoneConfig:
+        Comment: !Sub '${Application}-${Environment}'
+      HostedZoneTags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-hosted-zone'
+  
+  RecordSets:
+    Type: 'AWS::Route53::RecordSetGroup'
+    Properties:
+      Comment: !Sub '${Application}-${Environment}-records'
+      HostedZoneId: !Sub '${HostedZone}'
+      RecordSets:
+        - Name: !Sub '${DomainName}.'
+          Type: 'A'
+          AliasTarget:
+            DNSName: !Sub '${WebDistribution.DomainName}'
+            HostedZoneId: !Sub '${CloudFrontHostedZone}'
+            EvaluateTargetHealth: false
+        - Name: !Sub '${DomainName}.'
+          Type: 'AAAA'
+          AliasTarget:
+            DNSName: !Sub '${WebDistribution.DomainName}'
+            HostedZoneId: !Sub '${CloudFrontHostedZone}'
+            EvaluateTargetHealth: false
+  
+  LogsBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      AccessControl: 'LogDeliveryWrite'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-logs-bucket'
+          
+  WebBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      LoggingConfiguration:
+        DestinationBucketName: !Sub '${LogsBucket}'
+        LogFilePrefix: 'web-bucket/'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-web-bucket'
+  
+  WebBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Sub '${WebBucket}'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              CanonicalUser: !Sub '${WebDistributionIdentity.S3CanonicalUserId}'
+            Action:
+              's3:GetObject'
+            Resource:
+              - !Sub '${WebBucket.Arn}/*'
+  
+  WebDistributionIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub '${Application}-${Environment}-id'
+  
+  WebDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-web-distribution'
+      DistributionConfig:
+        Comment: !Sub '${Application}-${Environment}-web'
+        Enabled: true
+        Aliases:
+          - !Sub '${DomainName}'
+        # CustomErrorResponses
+        DefaultRootObject: 'index.html'
+        HttpVersion: 'http2'
+        IPV6Enabled: true
+        PriceClass: 'PriceClass_100'
+        Logging:
+          Bucket: !Sub '${LogsBucket.DomainName}'
+          Prefix: 'web-distribution/'
+        Origins:
+          - Id: 'WebBucket'
+            DomainName: !Sub '${WebBucket.RegionalDomainName}'
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${WebDistributionIdentity}'
+          - Id: 'Api'
+            DomainName: !Sub '${ApiDomain.RegionalDomainName}'
+            CustomOriginConfig:
+              OriginProtocolPolicy: 'https-only'
+              OriginSSLProtocols:
+                - 'TLSv1.2'
+        CacheBehaviors:
+          - TargetOriginId: 'Api'
+            AllowedMethods:
+              - 'DELETE'
+              - 'GET'
+              - 'HEAD'
+              - 'OPTIONS'
+              - 'PATCH'
+              - 'POST'
+              - 'PUT'
+            CachedMethods:
+              - 'GET'
+              - 'HEAD'
+              - 'OPTIONS'
+            Compress: true
+            DefaultTTL: 0
+            MaxTTL: 0
+            MinTTL: 0
+            PathPattern: 'api/*'
+            ViewerProtocolPolicy: 'redirect-to-https'
+            ForwardedValues:
+              QueryString: true
+              Headers:
+                - '*'
+        DefaultCacheBehavior:
+          TargetOriginId: 'WebBucket'
+          Compress: true
+          DefaultTTL: 0
+          MaxTTL: 0
+          MinTTL: 0
+          ViewerProtocolPolicy: 'redirect-to-https'
+          ForwardedValues:
+            QueryString: false
+        ViewerCertificate:
+          AcmCertificateArn: !Sub '${Certificate}'
+          MinimumProtocolVersion: 'TLSv1.1_2016'
+          SslSupportMethod: 'sni-only'

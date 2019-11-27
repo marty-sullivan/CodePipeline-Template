@@ -28,11 +28,6 @@ Parameters:
     Description: 'Mobile phone to which administrative alerts are sent via SMS'
     Type: 'String'
     
-  CloudFrontHostedZone:
-    Default: 'Z2FDTNDATAQYW2'
-    Description: 'The Hosted Zone that the CloudFront service uses'
-    Type: 'String'
-
 Outputs:
 
   # Container Repositories
@@ -227,6 +222,25 @@ Resources:
           Value: !Sub '${Environment}'
         - Key: 'Resource'
           Value: !Sub '${Application}-${Environment}-compute-stack'
+
+  # Web
+  
+  WebStack:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL: './web.yml'
+      Parameters:
+        Application: !Sub '${Application}'
+        Environment: !Sub '${Environment}'
+        DomainName: !Sub '${DomainName}'
+        Api: !Sub '${Api}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-web-stack'
 
   # CodeBuild Project
 
