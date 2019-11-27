@@ -24,6 +24,11 @@ Parameters:
     Description: 'The Hosted Zone that the CloudFront service uses'
     Type: 'String'
 
+Outputs:
+
+  WebBucket:
+    Value: !Sub '${WebBucket}'
+
 Resources:
 
   Certificate:
