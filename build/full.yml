@@ -159,7 +159,7 @@ Resources:
     Type: 'AWS::Serverless::Api'
     Properties:
       EndpointConfiguration: 'REGIONAL'
-      StageName: !Sub '${Environment}'
+      StageName: 'api'
       DefinitionBody:
         swagger: 2.0
         info:
