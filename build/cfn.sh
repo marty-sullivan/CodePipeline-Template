@@ -25,6 +25,7 @@ aws cloudformation deploy \
   --parameter-overrides \
     "Application=$APPLICATION" \
     "Environment=$ENVIRONMENT" \
+    "DomainName=$DOMAIN_NAME" \
     "GitHubRepo=$GITHUB_REPO" \
     "AdminEmail=$ADMIN_EMAIL" \
     "AdminPhone=$ADMIN_PHONE" \

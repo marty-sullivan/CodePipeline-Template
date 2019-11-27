@@ -11,6 +11,10 @@ Parameters:
   Environment:
     Description: 'Name of the deployment environment'
     Type: 'String'
+  
+  DomainName:
+    Description: 'The base domain name for the website'
+    Type: 'String'
     
   GitHubRepo:
     Description: 'The GitHub repository for this application'
