@@ -188,28 +188,28 @@ Resources:
 
   # Functions
   
-  ExampleFunction:
-    Type: 'AWS::Serverless::Function'
-    Properties:
-      CodeUri: './lambdas/example'
-      Tags:
-        Resource: !Sub '${Application}-example-function'
-      Events:
-        ApiExampleGetResource:
-          Type: 'Api'
-          Properties:
-            Path: '/example'
-            Method: 'GET'
-            RestApiId: !Sub '${Api}'
-      Policies:
-        - 'AWSLambdaBasicExecutionRole'
-        # - Version: '2012-10-17'
-        #   Statement:
-        #     - Effect: 'Allow'
-        #       Action:
-        #         - ''
-        #       Resource:
-        #         - !Sub ''
+  # ExampleFunction:
+  #   Type: 'AWS::Serverless::Function'
+  #   Properties:
+  #     CodeUri: './lambdas/example'
+  #     Tags:
+  #       Resource: !Sub '${Application}-example-function'
+  #     Events:
+  #       ApiExampleGetResource:
+  #         Type: 'Api'
+  #         Properties:
+  #           Path: '/example'
+  #           Method: 'GET'
+  #           RestApiId: !Sub '${Api}'
+  #     Policies:
+  #       - 'AWSLambdaBasicExecutionRole'
+  #       # - Version: '2012-10-17'
+  #       #   Statement:
+  #       #     - Effect: 'Allow'
+  #       #       Action:
+  #       #         - ''
+  #       #       Resource:
+  #       #         - !Sub ''
 
   # Compute
   
