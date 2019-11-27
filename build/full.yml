@@ -208,20 +208,20 @@ Resources:
 
   # Compute
   
-  ComputeStack:
-    Type: 'AWS::CloudFormation::Stack'
-    Properties:
-      TemplateURL: './compute.yml'
-      Parameters:
-        Application: !Sub '${Application}'
-        Environment: !Sub '${Environment}'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-compute-stack'
+  # ComputeStack:
+  #   Type: 'AWS::CloudFormation::Stack'
+  #   Properties:
+  #     TemplateURL: './compute.yml'
+  #     Parameters:
+  #       Application: !Sub '${Application}'
+  #       Environment: !Sub '${Environment}'
+  #     Tags:
+  #       - Key: 'Application'
+  #         Value: !Sub '${Application}'
+  #       - Key: 'Environment'
+  #         Value: !Sub '${Environment}'
+  #       - Key: 'Resource'
+  #         Value: !Sub '${Application}-${Environment}-compute-stack'
 
   # Web
   
