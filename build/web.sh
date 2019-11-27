@@ -2,7 +2,7 @@
 
 WEB_BUCKET=$(aws cloudformation describe-stacks \
   --stack-name "$APPLICATION-$ENVIRONMENT" \
-  --query "Stacks[0].Outputs[?OutputKey==`WebBucket`].OutputValue" \
+  --query 'Stacks[0].Outputs[?OutputKey==`WebBucket`].OutputValue' \
   --output text)
 
 aws s3 sync \
