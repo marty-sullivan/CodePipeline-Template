@@ -5,7 +5,7 @@ phases:
   install:
     runtime-versions:
       docker: 18
-      python: 3.7
+      python: 3.8
       
     commands:
       - 'pip3 install --upgrade awscli'
@@ -15,3 +15,4 @@ phases:
       - '$CODEBUILD_SRC_DIR/build/lambdas.sh'
       - '$CODEBUILD_SRC_DIR/build/cfn.sh'
       - '$CODEBUILD_SRC_DIR/build/containers.sh'
+      - '$CODEBUILD_SRC_DIR/build/web.sh'
