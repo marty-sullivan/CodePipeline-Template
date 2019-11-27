@@ -104,6 +104,8 @@ Resources:
             Value: !Sub '${Application}'
           - Name: 'ENVIRONMENT'
             Value: !Sub '${Environment}'
+          - Name: 'DOMAIN_NAME'
+            Value: !Sub '${DomainName}'
           - Name: 'GITHUB_REPO'
             Value: !Sub '${GitHubRepo}'
           - Name: 'ADMIN_EMAIL'
