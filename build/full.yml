@@ -189,6 +189,20 @@ Resources:
                 uri:
                   !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ExampleFunction.Arn}/invocations'
 
+  ApiUsagePlan:
+    Type: 'AWS::ApiGateway::UsagePlan'
+    DependsOn: 
+      - 'ApiapiStage'
+    Properties:
+      UsagePlanName: !Sub '${Application}-${Environment}'
+      Description: !Sub 'Usage Plan for ${Application}-${Environment}'
+      ApiStages:
+        - ApiId: !Sub '${Api}'
+          Stage: 'api'
+          #Throttle:
+      #Quota:
+      #Throttle:
+
   # Functions
   
   ExampleFunction:
