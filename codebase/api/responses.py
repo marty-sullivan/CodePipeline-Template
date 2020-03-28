@@ -1,10 +1,23 @@
 import json
 import logging
-from . import get_logger, json_handler
+from codebase import get_logger, json_handler
 
 DEFAULT_CACHE_CONTROL = 'no-cache, no-store, must-revalidate'
 
 logger = get_logger()
+
+def binary_response(Body, ContentType, StatusCode='200', CacheControl=DEFAULT_CACHE_CONTROL):
+  resp = dict(
+    statusCode=StatusCode,
+    headers={
+      'Cache-Control': CacheControl,
+      'Content-Type': ContentType,
+    },
+    body=Body,
+    isBase64Encoded=True,
+  )
+  
+  return resp
 
 def http_response(Body='{ }', StatusCode='200', ContentType='application/json', CacheControl=DEFAULT_CACHE_CONTROL):
     resp = dict(
