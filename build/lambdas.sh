@@ -15,7 +15,7 @@ do
   fi
 
   echo "Building Lambda $LAMBDA_NAME..."
-  cp -LR $CODEBUILD_SRC_DIR/lambdas/_common/* $dir
+  cp -LR $CODEBUILD_SRC_DIR/common/* $dir
   pip3 install -r $dir/requirements.txt -t $dir
 
 done

@@ -25,7 +25,7 @@ do
     --output text)
   
   cd $dir
-  cp -LR $CODEBUILD_SRC_DIR/containers/_common/* ./
+  cp -LR $CODEBUILD_SRC_DIR/common/* ./
   docker pull "$WRF_CONTAINER_REPO_URI:$WRF_VERSION"
   
   docker build \
