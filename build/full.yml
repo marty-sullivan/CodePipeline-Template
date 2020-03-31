@@ -228,6 +228,12 @@ Resources:
         #       Resource:
         #         - !Sub ''
 
+  ExampleFunctionLogs:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ExampleFunction}'
+      RetentionInDays: 14
+      
   # Compute
   
   ComputeStack:
