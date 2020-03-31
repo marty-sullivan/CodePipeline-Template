@@ -158,7 +158,7 @@ Resources:
           Application: !Sub '${Application}'
           Environment: !Sub '${Environment}'
           Resource: !Sub '${Application}-${Environment}-batch-compute'
-          Name: '${Application}-${Environment}-batch-compute'
+          Name: !Sub '${Application}-${Environment}-batch-compute'
 
   BatchJobQueue:
     Type: 'AWS::Batch::JobQueue'
