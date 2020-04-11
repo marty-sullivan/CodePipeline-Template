@@ -28,3 +28,5 @@ def json_handler(o):
         logger.warning('Unknown Type in json_handler: ' + str(o))
         return str(o)
     
+def nearest(items, pivot):
+  return min(items, key=lambda x: abs(x - pivot))
