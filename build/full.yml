@@ -98,6 +98,7 @@ Resources:
           - Effect: 'Allow'
             Principal:
               AWS: !Sub '${ComputeStack.Outputs.BatchInstanceRole}'
+              AWS: !Sub '${ComputeStack.Outputs.EcsTaskExecutionRole}'
             Action:
               - 'ecr:GetDownloadUrlForLayer'
               - 'ecr:BatchGetImage'
@@ -160,6 +161,46 @@ Resources:
         Vcpus: 1
       RetryStrategy:
         Attempts: 2
+
+  ExampleFargateDefinition:
+    Type: 'AWS::ECS::TaskDefinition'
+    Properties:
+      Cpu: 256
+      Memory: 512
+      ExecutionRoleArn: !Sub '${ComputeStack.Outputs.EcsTaskExecutionRole}'
+      NetworkMode: 'awsvpc'
+      TaskRoleArn: !Sub '${ExampleTaskRole.Arn}'
+      RequiresCompatibilities: 
+        - 'FARGATE'
+      ContainerDefinitions:
+        - Name: 'Example'
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${ExampleContainerRepo}:latest'
+          Essential: true
+          # Environment:
+          #   - Name: ''
+          #     Value: !Sub ''
+          # Secrets:
+          #   - Name: ''
+          #     ValueFrom: !Sub '/${Application}/${Environment}/'
+          LogConfiguration: 
+            LogDriver: 'awslogs'
+            Options:
+              awslogs-region: !Sub '${AWS::Region}'
+              awslogs-group: !Sub '${ExampleLogs}'
+              awslogs-stream-prefix: 'example'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-example-ecs-task'
+
+  ExampleLogs:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/${Application}/${Environment}/example'
+      RetentionInDays: 14
 
   # Api
   

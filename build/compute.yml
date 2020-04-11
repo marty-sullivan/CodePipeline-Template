@@ -13,6 +13,14 @@ Parameters:
 
 Outputs:
 
+  # ECS Environment
+  
+  EcsCluster:
+    Value: !Sub '${EcsCluster}'
+
+  EcsTaskExecutionRole:
+    Value: !Sub '${EcsTaskExecutionRole.Arn}'
+
   # Batch Environment
   
   BatchServiceRole:
