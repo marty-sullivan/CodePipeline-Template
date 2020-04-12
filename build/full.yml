@@ -173,7 +173,7 @@ Resources:
       RequiresCompatibilities: 
         - 'FARGATE'
       ContainerDefinitions:
-        - Name: 'Example'
+        - Name: 'example'
           Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${ExampleContainerRepo}:latest'
           Essential: true
           # Environment:
@@ -186,7 +186,7 @@ Resources:
             LogDriver: 'awslogs'
             Options:
               awslogs-region: !Sub '${AWS::Region}'
-              awslogs-group: !Sub '${ExampleLogs}'
+              awslogs-group: !Sub '${ComputeStack.Outputs.EcsLogGroup}'
               awslogs-stream-prefix: 'example'
       Tags:
         - Key: 'Application'
@@ -195,12 +195,6 @@ Resources:
           Value: !Sub '${Environment}'
         - Key: 'Resource'
           Value: !Sub '${Application}-${Environment}-example-ecs-task'
-
-  ExampleLogs:
-    Type: 'AWS::Logs::LogGroup'
-    Properties:
-      LogGroupName: !Sub '/${Application}/${Environment}/example'
-      RetentionInDays: 14
 
   # Api
   

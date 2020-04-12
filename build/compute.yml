@@ -48,6 +48,9 @@ Outputs:
   Vpc:
     Value: !Sub '${Vpc}'
   
+  DefaultSecurityGroup:
+    Value: !Sub '${Vpc.DefaultSecurityGroup}'
+  
   SubnetA:
     Value: !Sub '${SubnetA}'
 
@@ -94,18 +97,30 @@ Resources:
             Action: 'sts:AssumeRole'
             Principal:
               Service: !Sub 'ecs-tasks.${AWS::URLSuffix}'
-      ManagedPolicyArns:
-        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
       Policies:
         - PolicyName: 'ecs-task-execution'
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: 'Allow'
+                Action:
+                  - 'ecr:GetAuthorizationToken'
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:BatchGetImage'
+                Resource:
+                  - '*'
+              - Effect: 'Allow'
                 Action: 
                   - 'ssm:GetParameters'
                 Resource:
                   - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${Application}/${Environment}/*'
+              - Effect: 'Allow'
+                Action:
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource:
+                  - !Sub '${EcsLogGroup.Arn}'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
@@ -113,6 +128,12 @@ Resources:
           Value: !Sub '${Environment}'
         - Key: 'Resource'
           Value: !Sub '${Application}-${Environment}-ecs-task-execution-role'
+
+  EcsLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/${Application}/${Environment}/ecs'
+      RetentionInDays: 14
 
   # Batch Roles
 
