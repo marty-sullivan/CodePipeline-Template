@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Standard Analytics Template'
+
+Parameters:
+  
+  Application:
+    Description: 'Name of the application for billing'
+    Type: 'String'
+    
+  Environment:
+    Description: 'Name of the deployment environment'
+    Type: 'String'
+    
+  WebLogsBucket:
+    Type: 'String'
+
+Resources:
+
+  AnalyticsBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-analytics-bucket'
+
+  AnalyticsWorkgroup:
+    Type: 'AWS::Athena::WorkGroup'
+    Properties:
+      Name: !Sub '${Application}-${Environment}-analytics'
+      State: 'ENABLED'
+      WorkGroupConfiguration:
+        # BytesScannedCutoffPerQuery:
+        EnforceWorkGroupConfiguration: true
+        PublishCloudWatchMetricsEnabled: true
+        RequesterPaysEnabled: false
+        ResultConfiguration:
+          # EncryptionConfiguration:
+          OutputLocation: !Sub 's3://${AnalyticsBucket}/query-results/'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-analytics-workgroup'
+
+  AnalyticsDatabase:
+    Type: 'AWS::Glue::Database'
+    Properties:
+      CatalogId: !Sub '${AWS::AccountId}'
+      DatabaseInput:
+        Description: !Sub 'Analytics Tables for ${Application}-${Environment}'
+    
+  CloudFrontTable:
+    Type: 'AWS::Glue::Table'
+    Properties:
+      CatalogId: !Sub '${AWS::AccountId}'
+      DatabaseName: !Sub '${AnalyticsDatabase}'
+      TableInput:
+        Name: 'cloudfront_raw'
+        Description: !Sub 'Raw CloudFront Requests Table for ${Application}-${Environment}'
+        Owner: 'hadoop'
+        Retention: 0
+        TableType: 'EXTERNAL_TABLE'
+        Parameters:
+          classification: 'csv'
+          compressionType: 'gzip'
+          EXTERNAL: 'TRUE'
+          typeOfData: 'file'
+          'skip.header.line.count': '2'
+        StorageDescriptor:
+          Location: !Sub 's3://${WebLogsBucket}/web-distribution'
+          Compressed: true
+          StoredAsSubDirectories: false
+          InputFormat: 'org.apache.hadoop.mapred.TextInputFormat'
+          OutputFormat: 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+          SerdeInfo:
+            SerializationLibrary: 'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe'
+            Parameters:
+              'serialization.format': "\t"
+              'field.delim': "\t"
+          Columns:
+            - Name: 'date'
+              Type: 'date'
+            - Name: 'time'
+              Type: 'string'
+            - Name: 'location'
+              Type: 'string'
+            - Name: 'bytes'
+              Type: 'bigint'
+            - Name: 'requestip'
+              Type: 'string'
+            - Name: 'method'
+              Type: 'string'
+            - Name: 'host'
+              Type: 'string'
+            - Name: 'uri'
+              Type: 'string'
+            - Name: 'status'
+              Type: 'bigint'
+            - Name: 'referrer'
+              Type: 'string'
+            - Name: 'useragent'
+              Type: 'string'
+            - Name: 'querystring'
+              Type: 'string'
+            - Name: 'cookie'
+              Type: 'string'
+            - Name: 'resulttype'
+              Type: 'string'
+            - Name: 'requestid'
+              Type: 'string'
+            - Name: 'hostheader'
+              Type: 'string'
+            - Name: 'requestprotocol'
+              Type: 'string'
+            - Name: 'requestbytes'
+              Type: 'bigint'
+            - Name: 'timetaken'
+              Type: 'double'
+            - Name: 'xforwardedfor'
+              Type: 'string'
+            - Name: 'sslprotocol'
+              Type: 'string'
+            - Name: 'sslcipher'
+              Type: 'string'
+            - Name: 'responseresulttype'
+              Type: 'string'
+            - Name: 'httpversion'
+              Type: 'string'
+            - Name: 'filestatus'
+              Type: 'string'
+            - Name: 'encryptedfields'
+              Type: 'bigint'
+            - Name: 'port'
+              Type: 'bigint'
+            - Name: 'time_to_first_byte'
+              Type: 'double'
+            - Name: 'detailed_result_type'
+              Type: 'string'
+            - Name: 'content_length'
+              Type: 'bigint'
+            - Name: 'range_start'
+              Type: 'bigint'
+            - Name: 'range_end'
+              Type: 'bigint'
+  

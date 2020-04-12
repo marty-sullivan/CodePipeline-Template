@@ -29,6 +29,9 @@ Outputs:
   WebBucket:
     Value: !Sub '${WebBucket}'
 
+  WebLogsBucket:
+    Value: !Sub '${LogsBucket}'
+
 Resources:
 
   Certificate:

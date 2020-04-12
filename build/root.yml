@@ -244,6 +244,24 @@ Resources:
         - Key: 'Resource'
           Value: !Sub '${Application}-${Environment}-web-stack'
 
+  # Analytics
+  
+  AnalyticsStack:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      TemplateURL: './analytics.yml'
+      Parameters:
+        Application: !Sub '${Application}'
+        Environment: !Sub '${Environment}'
+        WebLogsBucket: !Sub '${WebStack.Outputs.WebLogsBucket}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-analytics-stack'
+
   # Build
 
   BuildStack:
