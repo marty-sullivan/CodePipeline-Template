@@ -30,94 +30,28 @@ Parameters:
 
 Outputs:
 
-  BuildBucket:
-    Value: !Sub '${BuildBucket}'
-    
   BuildProject:
-    Value: !Sub '${BuildProject}'
+    Value: !Sub '${BuildStack.Outputs.BuildProject}'
 
 Resources:
 
-  # CodeBuild Project
+  # Build
 
-  BuildBucket:
-    Type: 'AWS::S3::Bucket'
+  BuildStack:
+    Type: 'AWS::CloudFormation::Stack'
     Properties:
-      LifecycleConfiguration:
-        Rules:
-          - Id: 'daily-cleanup'
-            Status: 'Enabled'
-            AbortIncompleteMultipartUpload:
-              DaysAfterInitiation: 1
-            ExpirationInDays: 1
-            NoncurrentVersionExpirationInDays: 1
+      TemplateURL: './build.yml'
+      Parameters:
+        Application: !Sub '${Application}'
+        Environment: !Sub '${Environment}'
+        DomainName: !Sub '${DomainName}'
+        GitHubRepo: !Sub '${GitHubRepo}'
+        AdminEmail: !Sub '${AdminEmail}'
+        AdminPhone: !Sub '${AdminPhone}'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-build-bucket'
-
-  BuildRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Action: 'sts:AssumeRole'
-            Principal:
-              Service: !Sub 'codebuild.${AWS::URLSuffix}'
-      ManagedPolicyArns:
-        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess'
-  
-  BuildLogs:
-    Type: 'AWS::Logs::LogGroup'
-    Properties:
-      LogGroupName: !Sub '/aws/codebuild/${BuildProject}'
-      
-  BuildProject:
-    Type: 'AWS::CodeBuild::Project'
-    Properties:
-      Artifacts:
-        Type: 'NO_ARTIFACTS'
-      ServiceRole: !Sub '${BuildRole.Arn}'
-      Source:
-        Location: !Sub '${GitHubRepo}'
-        Type: 'GITHUB'
-        GitCloneDepth: 0
-        BuildSpec: 'build/buildspec.yml'
-        Auth:
-          Type: 'OAUTH'
-      Triggers:
-        Webhook: true
-      Environment:
-        ComputeType: 'BUILD_GENERAL1_SMALL'
-        Image: 'aws/codebuild/amazonlinux2-x86_64-standard:2.0'
-        Type: 'LINUX_CONTAINER'
-        PrivilegedMode: true
-        EnvironmentVariables:
-          - Name: 'STACK_NAME'
-            Value: !Sub '${AWS::StackName}'
-          - Name: 'APPLICATION'
-            Value: !Sub '${Application}'
-          - Name: 'ENVIRONMENT'
-            Value: !Sub '${Environment}'
-          - Name: 'DOMAIN_NAME'
-            Value: !Sub '${DomainName}'
-          - Name: 'GITHUB_REPO'
-            Value: !Sub '${GitHubRepo}'
-          - Name: 'ADMIN_EMAIL'
-            Value: !Sub '${AdminEmail}'
-          - Name: 'ADMIN_PHONE'
-            Value: !Sub '${AdminPhone}'
-          - Name: 'BUILD_BUCKET'
-            Value: !Sub '${BuildBucket}'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub '${Application}-build-project'
+          Value: !Sub '${Application}-${Environment}-build-stack'

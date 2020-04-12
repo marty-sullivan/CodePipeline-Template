@@ -11,6 +11,10 @@ Parameters:
     Description: 'Name of the deployment environment'
     Type: 'String'
 
+  BuildRole:
+    Description: 'ARN of the CodeBuild Role'
+    Type: 'String'
+
 Outputs:
 
   # ECS Environment
@@ -20,6 +24,12 @@ Outputs:
 
   EcsTaskExecutionRole:
     Value: !Sub '${EcsTaskExecutionRole.Arn}'
+
+  EcsLogGroup: 
+    Value: !Sub '${EcsLogGroup}'
+
+  EcsRepository:
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}'
 
   # Batch Environment
   
@@ -134,6 +144,60 @@ Resources:
     Properties:
       LogGroupName: !Sub '/${Application}/${Environment}/ecs'
       RetentionInDays: 14
+
+  EcsRepository:
+    Type: 'AWS::ECR::Repository'
+    Properties:
+      RepositoryPolicyText:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              AWS: 
+                - !Sub '${BatchInstanceRole.Arn}'
+                - !Sub '${EcsTaskExecutionRole.Arn}'
+            Action:
+              - 'ecr:GetDownloadUrlForLayer'
+              - 'ecr:BatchGetImage'
+              - 'ecr:BatchCheckLayerAvailability'
+          - Effect: 'Allow'
+            Principal:
+              AWS: !Sub '${BuildRole}'
+            Action:
+              - 'ecr:BatchGetImage'
+              - 'ecr:BatchCheckLayerAvailability'
+              - 'ecr:CompleteLayerUpload'
+              - 'ecr:DescribeImages'
+              - 'ecr:GetDownloadUrlForLayer'
+              - 'ecr:InitiateLayerUpload'
+              - 'ecr:PutImage'
+              - 'ecr:UploadLayerPart'
+      LifecyclePolicy:
+        LifecyclePolicyText: |-
+          {
+            "rules": [
+              {
+                "action": {
+                  "type": "expire"
+                },
+                "selection": {
+                  "countType": "sinceImagePushed",
+                  "countUnit": "days",
+                  "countNumber": 1,
+                  "tagStatus": "untagged"
+                },
+                "description": "Expire Untagged Images",
+                "rulePriority": 1
+              }
+            ]
+          }
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-ecs-respository'
 
   # Batch Roles
 

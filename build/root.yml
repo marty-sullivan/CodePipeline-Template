@@ -30,26 +30,17 @@ Parameters:
     
 Outputs:
 
-  # Container Repositories
-  
-  ExampleContainerRepo:
-    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${ExampleContainerRepo}'
+  EcsRepository:
+    Value: !Sub '${ComputeStack.Outputs.EcsRepository}'
 
-  # Web
-  
   Api:
     Value: !Sub '${Api}'
   
   WebBucket:
     Value: !Sub '${WebStack.Outputs.WebBucket}'
 
-  # Build Project
-
-  BuildBucket:
-    Value: !Sub '${BuildBucket}'
-    
   BuildProject:
-    Value: !Sub '${BuildProject}'
+    Value: !Sub '${BuildStack.Outputs.BuildProject}'
 
 Globals:
   
@@ -89,59 +80,6 @@ Resources:
         - Key: 'Resource'
           Value: !Sub '${Application}-${Environment}--task-role'
   
-  ExampleContainerRepo:
-    Type: 'AWS::ECR::Repository'
-    Properties:
-      RepositoryPolicyText:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Principal:
-              AWS: !Sub '${ComputeStack.Outputs.BatchInstanceRole}'
-              AWS: !Sub '${ComputeStack.Outputs.EcsTaskExecutionRole}'
-            Action:
-              - 'ecr:GetDownloadUrlForLayer'
-              - 'ecr:BatchGetImage'
-              - 'ecr:BatchCheckLayerAvailability'
-          - Effect: 'Allow'
-            Principal:
-              AWS: !Sub '${BuildRole.Arn}'
-            Action:
-              - 'ecr:BatchGetImage'
-              - 'ecr:BatchCheckLayerAvailability'
-              - 'ecr:CompleteLayerUpload'
-              - 'ecr:DescribeImages'
-              - 'ecr:GetDownloadUrlForLayer'
-              - 'ecr:InitiateLayerUpload'
-              - 'ecr:PutImage'
-              - 'ecr:UploadLayerPart'
-      LifecyclePolicy:
-        LifecyclePolicyText: |-
-          {
-            "rules": [
-              {
-                "action": {
-                  "type": "expire"
-                },
-                "selection": {
-                  "countType": "sinceImagePushed",
-                  "countUnit": "days",
-                  "countNumber": 1,
-                  "tagStatus": "untagged"
-                },
-                "description": "Expire Untagged Images",
-                "rulePriority": 1
-              }
-            ]
-          }
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}--container-repo'
-
   ExampleBatchJobDefinition:
     Type: 'AWS::Batch::JobDefinition'
     Properties:
@@ -154,7 +92,7 @@ Resources:
             Value: !Sub '${Environment}'
           - Name: 'AWS_ACCOUNT_ID'
             Value: !Sub '${AWS::AccountId}'
-        Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${ExampleContainerRepo}:latest'
+        Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${ComputeStack.Outputs.EcsRepository}:Example'
         JobRoleArn: !Sub '${ExampleTaskRole.Arn}'
         Privileged: true
         Memory: 1536
@@ -174,7 +112,7 @@ Resources:
         - 'FARGATE'
       ContainerDefinitions:
         - Name: 'example'
-          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${ExampleContainerRepo}:latest'
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${ComputeStack.Outputs.EcsRepository}:Example'
           Essential: true
           # Environment:
           #   - Name: ''
@@ -278,6 +216,7 @@ Resources:
       Parameters:
         Application: !Sub '${Application}'
         Environment: !Sub '${Environment}'
+        BuildRole: !Sub '${BuildStack.Outputs.BuildRole}'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
@@ -305,86 +244,24 @@ Resources:
         - Key: 'Resource'
           Value: !Sub '${Application}-${Environment}-web-stack'
 
-  # CodeBuild Project
+  # Build
 
-  BuildBucket:
-    Type: 'AWS::S3::Bucket'
+  BuildStack:
+    Type: 'AWS::CloudFormation::Stack'
     Properties:
-      LifecycleConfiguration:
-        Rules:
-          - Id: 'daily-cleanup'
-            Status: 'Enabled'
-            AbortIncompleteMultipartUpload:
-              DaysAfterInitiation: 1
-            ExpirationInDays: 1
-            NoncurrentVersionExpirationInDays: 1
+      TemplateURL: './build.yml'
+      Parameters:
+        Application: !Sub '${Application}'
+        Environment: !Sub '${Environment}'
+        DomainName: !Sub '${DomainName}'
+        GitHubRepo: !Sub '${GitHubRepo}'
+        AdminEmail: !Sub '${AdminEmail}'
+        AdminPhone: !Sub '${AdminPhone}'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-build-bucket'
-
-  BuildRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Action: 'sts:AssumeRole'
-            Principal:
-              Service: !Sub 'codebuild.${AWS::URLSuffix}'
-      ManagedPolicyArns:
-        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess'
+          Value: !Sub '${Application}-${Environment}-build-stack'
   
-  BuildLogs:
-    Type: 'AWS::Logs::LogGroup'
-    Properties:
-      LogGroupName: !Sub '/aws/codebuild/${BuildProject}'
-      
-  BuildProject:
-    Type: 'AWS::CodeBuild::Project'
-    Properties:
-      Artifacts:
-        Type: 'NO_ARTIFACTS'
-      ServiceRole: !Sub '${BuildRole.Arn}'
-      Source:
-        Location: !Sub '${GitHubRepo}'
-        Type: 'GITHUB'
-        GitCloneDepth: 0
-        BuildSpec: 'build/buildspec.yml'
-        Auth:
-          Type: 'OAUTH'
-      Triggers:
-        Webhook: true
-      Environment:
-        ComputeType: 'BUILD_GENERAL1_SMALL'
-        Image: 'aws/codebuild/amazonlinux2-x86_64-standard:2.0'
-        Type: 'LINUX_CONTAINER'
-        PrivilegedMode: true
-        EnvironmentVariables:
-          - Name: 'STACK_NAME'
-            Value: !Sub '${AWS::StackName}'
-          - Name: 'APPLICATION'
-            Value: !Sub '${Application}'
-          - Name: 'ENVIRONMENT'
-            Value: !Sub '${Environment}'
-          - Name: 'DOMAIN_NAME'
-            Value: !Sub '${DomainName}'
-          - Name: 'GITHUB_REPO'
-            Value: !Sub '${GitHubRepo}'
-          - Name: 'ADMIN_EMAIL'
-            Value: !Sub '${AdminEmail}'
-          - Name: 'ADMIN_PHONE'
-            Value: !Sub '${AdminPhone}'
-          - Name: 'BUILD_BUCKET'
-            Value: !Sub '${BuildBucket}'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub '${Application}-build-project'

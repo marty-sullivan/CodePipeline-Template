@@ -1,5 +1,7 @@
 #!/bin/bash
 
+STACK_NAME="$APPLICATION-$ENVIRONMENT"
+
 echo "Packaging CloudFormation Template..."
 
 aws cloudformation package \
