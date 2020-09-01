@@ -11,47 +11,182 @@ Parameters:
   Environment:
     Description: 'Name of the deployment environment'
     Type: 'String'
-  
+    
   DomainName:
-    Description: 'The base domain name for the website'
+    Description: 'The base domain name for the application website'
     Type: 'String'
     
-  GitHubRepo:
-    Description: 'The GitHub repository for this application'
+  GitHubOwner:
+    Description: 'The GitHub repository owner for this application'
     Type: 'String'
   
-  AdminEmail:
+  GitHubRepo:
+    Description: 'The GitHub repository name for this application'
+    Type: 'String'
+  
+  AlertEmail:
     Description: 'Email to which administrative alerts are sent'
     Type: 'String'
   
-  AdminPhone:
-    Description: 'Mobile phone to which administrative alerts are sent via SMS'
+  AlertPhone:
+    Description: 'Phone number to which administrative alerts are sent via SMS'
     Type: 'String'
+    
+# Outputs:
 
-Outputs:
-
-  BuildProject:
-    Value: !Sub '${BuildStack.Outputs.BuildProject}'
+#   BuildProject:
+#     Value: !Sub '${BuildProject}'
 
 Resources:
 
   # Build
-
-  BuildStack:
-    Type: 'AWS::CloudFormation::Stack'
+  
+  BuildBucket:
+    Type: 'AWS::S3::Bucket'
     Properties:
-      TemplateURL: './build.yml'
-      Parameters:
-        Application: !Sub '${Application}'
-        Environment: !Sub '${Environment}'
-        DomainName: !Sub '${DomainName}'
-        GitHubRepo: !Sub '${GitHubRepo}'
-        AdminEmail: !Sub '${AdminEmail}'
-        AdminPhone: !Sub '${AdminPhone}'
+      # LifecycleConfiguration:
+      #   Rules:
+      #     - Id: 'daily-cleanup'
+      #       Status: 'Enabled'
+      #       AbortIncompleteMultipartUpload:
+      #         DaysAfterInitiation: 1
+      #       ExpirationInDays: 1
+      #       NoncurrentVersionExpirationInDays: 1
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-build-stack'
+          Value: !Sub 'build-bucket'
+
+  BuildRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action: 'sts:AssumeRole'
+            Principal:
+              Service: 
+                - !Sub 'codebuild.${AWS::URLSuffix}'
+                - !Sub 'codepipeline.${AWS::URLSuffix}'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub 'build-role'
+  
+  CloudFormationBuildLogs:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${CloudFormationBuildProject}'
+      
+  CloudFormationBuildProject:
+    Type: 'AWS::CodeBuild::Project'
+    Properties:
+      TimeoutInMinutes: 180
+      Artifacts:
+        Type: 'CODEPIPELINE'
+      Cache:
+        Type: 'NO_CACHE'
+        # Type: 'LOCAL'
+        # Modes:
+        #   - 'LOCAL_DOCKER_LAYER_CACHE'
+      ServiceRole: !Sub '${BuildRole.Arn}'
+      Source:
+        Type: 'CODEPIPELINE'
+        BuildSpec: 'build/cfn_buildspec.yml'
+      Environment:
+        ComputeType: 'BUILD_GENERAL1_SMALL'
+        Image: 'aws/codebuild/amazonlinux2-x86_64-standard:3.0'
+        Type: 'LINUX_CONTAINER'
+        EnvironmentVariables:
+          - Name: 'APPLICATION'
+            Value: !Sub '${Application}'
+          - Name: 'ENVIRONMENT'
+            Value: !Sub '${Environment}'
+          - Name: 'BUILD_BUCKET'
+            Value: !Sub '${BuildBucket}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub 'build-project'
+
+  BuildPipeline:
+    Type: 'AWS::CodePipeline::Pipeline'
+    Properties:
+      ArtifactStore:
+        Location: !Sub '${BuildBucket}'
+        Type: 'S3'
+      RestartExecutionOnUpdate: false
+      RoleArn: !Sub '${BuildRole.Arn}'
+      Stages:
+        - Name: 'Source'
+          Actions:
+            - Name: 'SourceAction'
+              OutputArtifacts:
+                - Name: 'SourceArtifact'
+              ActionTypeId: 
+                Category: 'Source'
+                Owner: 'ThirdParty'
+                Provider: 'GitHub'
+                Version: '1'
+              Configuration:
+                Owner: !Sub '${GitHubOwner}'
+                Repo: !Sub '${GitHubRepo}'
+                Branch: !Sub '${Environment}'
+                OAuthToken: '{{resolve:ssm:/CodePipeline/GitHub:1}}'
+                PollForSourceChanges: false
+        - Name: 'CloudFormationBuild'
+          Actions:
+            - Name: 'CloudFormationBuildAction'
+              InputArtifacts:
+                - Name: 'SourceArtifact'
+              OutputArtifacts:
+                - Name: 'CloudFormationArtifact'
+              ActionTypeId:
+                Category: 'Build'
+                Owner: 'AWS'
+                Provider: 'CodeBuild'
+                Version: '1'
+              Configuration:
+                ProjectName: !Sub '${CloudFormationBuildProject}'
+                PrimarySource: 'SourceArtifact'
+        - Name: 'CloudFormationDeploy'
+          Actions:
+            - Name: 'CloudFormationDeployAction'
+              InputArtifacts:
+                - Name: 'CloudFormationArtifact'
+              ActionTypeId:
+                Category: 'Deploy'
+                Owner: 'AWS'
+                Provider: 'CloudFormation'
+                Version: '1'
+              Configuration:
+                ActionMode: 'CREATE_UPDATE'
+                StackName: !Sub '${Application}-${Environment}'
+                Capabilities: 'CAPABILITY_IAM,CAPABILITY_NAMED_IAM'
+                RoleArn: !Sub '${BuildRole.Arn}'
+                TemplatePath: 'CloudFormationArtifact:packaged.yml'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub 'build-pipeline'
+  

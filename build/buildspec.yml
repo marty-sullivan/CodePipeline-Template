@@ -4,7 +4,6 @@ phases:
 
   install:
     runtime-versions:
-      docker: 18
       python: 3.8
       
     commands:
@@ -14,5 +13,12 @@ phases:
     commands:
       - '$CODEBUILD_SRC_DIR/build/lambdas.sh'
       - '$CODEBUILD_SRC_DIR/build/cfn.sh'
-      - '$CODEBUILD_SRC_DIR/build/containers.sh'
-      - '$CODEBUILD_SRC_DIR/build/web.sh'
+      # - '$CODEBUILD_SRC_DIR/build/containers.sh'
+      # - '$CODEBUILD_SRC_DIR/build/web.sh'
+
+artifacts:
+
+  CloudFormationArtifact:
+    base-directory: '$CODEBUILD_SRC_DIR/build'
+    files:
+      - 'packaged.yml'

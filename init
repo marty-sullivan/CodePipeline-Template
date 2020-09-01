@@ -2,7 +2,6 @@
 
 source ./config.sh
 export ENVIRONMENT="$1"
-export TEMP_BUCKET="$2"
 
 if [[ ! "$APPLICATION" =~ ^[A-Z][a-zA-Z0-9]*$ ]]
 then
@@ -12,18 +11,10 @@ then
 
 fi
 
-if [[ ! "$ENVIRONMENT" =~ ^[a-z0-9]*$ ]]
+if [[ ! "$ENVIRONMENT" =~ ^[a-z][a-z0-9]*$ ]]
 then
 
   echo "ERROR: ENVIRONMENT (\$1) must start with an lowercase letter and contain only lowercase letters and numbers"
-  exit 1
-
-fi
-
-if [[ ! "$TEMP_BUCKET" =~ ^[a-z0-9-]*$ ]]
-then
-
-  echo "ERROR: TEMP_BUCKET (\$2) must start with an lowercase letter and contain only lowercase letters, numbers and hyphens"
   exit 1
 
 fi
@@ -35,6 +26,14 @@ fi
 #   exit 1
 
 # fi
+
+if [[ $ENVIRONMENT != "master" ]]
+then
+
+  echo "Setting Non-Master Domain Name: $ENVIRONMENT.$DOMAIN_NAME"
+  DOMAIN_NAME="$ENVIRONMENT.$DOMAIN_NAME"
+
+fi
 
 STACK_NAME="$APPLICATION-$ENVIRONMENT"
 
@@ -67,91 +66,85 @@ else
 
   echo "Initializing $STACK_NAME CloudFormation Stack..."
   
-  aws cloudformation package \
-    --template-file ./build/init.yml \
-    --s3-bucket $TEMP_BUCKET \
-    --output-template-file ./build/packaged.yml \
-  
   aws cloudformation deploy \
     --stack-name "$STACK_NAME" \
-    --template-file ./build/packaged.yml \
+    --template-file ./build/init.yml \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
     --parameter-overrides \
       "Application=$APPLICATION" \
       "Environment=$ENVIRONMENT" \
       "DomainName=$DOMAIN_NAME" \
+      "GitHubOwner=$GITHUB_OWNER" \
       "GitHubRepo=$GITHUB_REPO" \
-      "AdminEmail=$ADMIN_EMAIL" \
-      "AdminPhone=$ADMIN_PHONE" \
+      "AlertEmail=$ALERT_EMAIL" \
+      "AlertPhone=$ALERT_PHONE" \
     --tags \
       "Application=$APPLICATION" \
       "Environment=$ENVIRONMENT" \
 
-  rm -f ./build/packaged.yml
+  # if [ "$ENVIRONMENT" == "master" ]
+  # then
+  
+  #   echo "Enabling Termination Protection for master branch stack $STACK_NAME"
+    
+  #   aws cloudformation update-termination-protection \
+  #     --stack-name "$STACK_NAME" \
+  #     --enable-termination-protection > /dev/null
+  
+  # fi
 
-  if [ "$ENVIRONMENT" == "master" ]
-  then
+  # BUILD_PROJECT=$(aws cloudformation describe-stacks \
+  #   --stack-name "$STACK_NAME" \
+  #   --query 'Stacks[0].Outputs[?OutputKey==`BuildProject`].OutputValue' \
+  #   --output text)
   
-    echo "Enabling Termination Protection for master branch stack $STACK_NAME"
-    
-    aws cloudformation update-termination-protection \
-      --stack-name "$STACK_NAME" \
-      --enable-termination-protection > /dev/null
+  # echo "Setting GitHub branch filter for CodeBuild Project $BUILD_PROJECT..."
   
-  fi
+  # aws codebuild update-webhook \
+  #   --project-name "$BUILD_PROJECT" \
+  #   --branch-filter "$ENVIRONMENT" \
+  #   --rotate-secret > /dev/null
+  
+  # echo "Building full application stack via AWS CodeBuild..."
+  
+  # BUILD_ID=$(aws codebuild start-build \
+  #   --project-name "$BUILD_PROJECT" \
+  #   --source-version "$ENVIRONMENT" \
+  #   --query 'build.id' \
+  #   --output text)
 
-  BUILD_PROJECT=$(aws cloudformation describe-stacks \
-    --stack-name "$STACK_NAME" \
-    --query 'Stacks[0].Outputs[?OutputKey==`BuildProject`].OutputValue' \
-    --output text)
-  
-  echo "Setting GitHub branch filter for CodeBuild Project $BUILD_PROJECT..."
-  
-  aws codebuild update-webhook \
-    --project-name "$BUILD_PROJECT" \
-    --branch-filter "$ENVIRONMENT" \
-    --rotate-secret > /dev/null
-  
-  echo "Building full application stack via AWS CodeBuild..."
-  
-  BUILD_ID=$(aws codebuild start-build \
-    --project-name "$BUILD_PROJECT" \
-    --source-version "$ENVIRONMENT" \
-    --query 'build.id' \
-    --output text)
+  # echo "You can watch progress at the following URI:"
+  # echo "https://console.aws.amazon.com/codesuite/codebuild/projects/$BUILD_PROJECT/build/$BUILD_ID/log"
 
-  echo "You can watch progress at the following URI:"
-  echo "https://console.aws.amazon.com/codesuite/codebuild/projects/$BUILD_PROJECT/build/$BUILD_ID/log"
-
-  while [ true ]
-  do
+  # while [ true ]
+  # do
   
-    sleep 10
+  #   sleep 10
     
-    BUILD_STATUS=$(aws codebuild batch-get-builds \
-    --ids "$BUILD_ID" \
-    --query 'builds[0].buildStatus' \
-    --output text)
+  #   BUILD_STATUS=$(aws codebuild batch-get-builds \
+  #   --ids "$BUILD_ID" \
+  #   --query 'builds[0].buildStatus' \
+  #   --output text)
     
-    if [ "$BUILD_STATUS" != "IN_PROGRESS" ]
-    then
+  #   if [ "$BUILD_STATUS" != "IN_PROGRESS" ]
+  #   then
     
-      break
+  #     break
     
-    fi
+  #   fi
   
-  done
+  # done
   
-  if [ "$BUILD_STATUS" != "SUCCEEDED" ]
-  then
+  # if [ "$BUILD_STATUS" != "SUCCEEDED" ]
+  # then
   
-    echo "There was a problem with the build! Check the console for logs..."
-    exit 1
+  #   echo "There was a problem with the build! Check the console for logs..."
+  #   exit 1
   
-  else
+  # else
   
-    echo "$STACK_NAME Fully Initialized!"
+  #   echo "$STACK_NAME Fully Initialized!"
     
-  fi
+  # fi
 
 fi
