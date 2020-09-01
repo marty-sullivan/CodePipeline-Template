@@ -332,10 +332,14 @@ Resources:
             Statement:
               - Effect: 'Allow'
                 Action:
-                  - 'cloudformation:*'
+                  - 'codebuild:*'
                 Resource:
-                  - !Sub '${AWS::StackId}'
-                  - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:aws:transform/*'
+                  - !Sub 'arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/${Application}-${Environment}*'
+              - Effect: 'Allow'
+                Action:
+                  - 'codepipeline:*'
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:${Application}-${Environment}*'
               - Effect: 'Allow'
                 Action:
                   - 'iam:*'
@@ -343,10 +347,31 @@ Resources:
                   - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${Application}-${Environment}*'
               - Effect: 'Allow'
                 Action:
+                  - 'lambda:*'
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${Application}-${Environment}*'
+              - Effect: 'Allow'
+                Action:
+                  - 'logs:*'
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*${Application}-${Environment}*'
+              - Effect: 'Allow'
+                Action:
+                  - 'cloudformation:*'
+                Resource:
+                  - !Sub '${AWS::StackId}'
+                  - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:aws:transform/*'
+              - Effect: 'Allow'
+                Action:
                   - 'ssm:GetParameter*'
                 Resource:
                   - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CodePipeline/GitHub'
                   - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${Application}/${Environment}/*'
+              - Effect: 'Allow'
+                Action:
+                  - 's3:*Bucket*'
+                Resource:
+                  - '*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
