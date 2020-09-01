@@ -32,10 +32,10 @@ Parameters:
     Description: 'Phone number to which administrative alerts are sent via SMS'
     Type: 'String'
     
-# Outputs:
+Outputs:
 
-#   BuildProject:
-#     Value: !Sub '${BuildProject}'
+  BuildBucket:
+    Value: !Sub '${BuildBucket}'
 
 Resources:
 
