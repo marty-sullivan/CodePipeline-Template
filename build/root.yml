@@ -335,7 +335,6 @@ Resources:
         - Key: 'Resource'
           Value: !Sub 'cloudformation-deploy-role'
   
-  
   CloudFormationBuildLogs:
     Type: 'AWS::Logs::LogGroup'
     Properties:
@@ -428,9 +427,19 @@ Resources:
               Configuration:
                 ActionMode: 'CREATE_UPDATE'
                 StackName: !Sub '${Application}-${Environment}'
-                Capabilities: 'CAPABILITY_IAM,CAPABILITY_NAMED_IAM'
+                Capabilities: 'CAPABILITY_IAM,CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND'
                 RoleArn: !Sub '${CloudFormationDeployRole.Arn}'
                 TemplatePath: 'CloudFormationArtifact::build/packaged.yml'
+                ParameterOverrides: !Sub |-
+                  {
+                    "Application": "${Application}",
+                    "Environment": "${Environment}",
+                    "DomainName": "${DomainName}",
+                    "GitHubOwner": "${GitHubOwner}",
+                    "GitHubRepo": "${GitHubRepo}",
+                    "AlertEmail": "${AlertEmail}",
+                    "AlertPhone": "${AlertPhone}"
+                  }
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
