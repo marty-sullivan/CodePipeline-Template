@@ -265,7 +265,7 @@ Resources:
   #         Value: !Sub '${Environment}'
   #       - Key: 'Resource'
   #         Value: !Sub '${Application}-${Environment}-analytics-stack'
-
+  
   # Build
   
   BuildBucket:
@@ -388,14 +388,12 @@ Resources:
   CloudFormationBuildProject:
     Type: 'AWS::CodeBuild::Project'
     Properties:
-      TimeoutInMinutes: 180
+      Name: !Sub '${Application}-${Environment}-cloudformation'
+      TimeoutInMinutes: 5
       Artifacts:
         Type: 'CODEPIPELINE'
       Cache:
         Type: 'NO_CACHE'
-        # Type: 'LOCAL'
-        # Modes:
-        #   - 'LOCAL_DOCKER_LAYER_CACHE'
       ServiceRole: !Sub '${BuildRole.Arn}'
       Source:
         Type: 'CODEPIPELINE'
