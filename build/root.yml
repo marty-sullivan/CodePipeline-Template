@@ -408,7 +408,7 @@ Resources:
                 StackName: !Sub '${Application}-${Environment}'
                 Capabilities: 'CAPABILITY_IAM,CAPABILITY_NAMED_IAM'
                 RoleArn: !Sub '${BuildRole.Arn}'
-                TemplatePath: 'CloudFormationArtifact:build/packaged.yml'
+                TemplatePath: 'CloudFormationArtifact::build/packaged.yml'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
