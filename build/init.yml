@@ -87,6 +87,27 @@ Resources:
         - Key: 'Resource'
           Value: !Sub 'build-role'
   
+  CloudFormationDeployRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action: 'sts:AssumeRole'
+            Principal:
+              Service: 
+                - !Sub 'cloudformation.${AWS::URLSuffix}'
+      # ManagedPolicyArns:
+      #   - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub 'cloudformation-deploy-role'
+  
   CloudFormationBuildLogs:
     Type: 'AWS::Logs::LogGroup'
     Properties:
@@ -180,7 +201,7 @@ Resources:
                 ActionMode: 'CREATE_UPDATE'
                 StackName: !Sub '${Application}-${Environment}'
                 Capabilities: 'CAPABILITY_IAM,CAPABILITY_NAMED_IAM'
-                RoleArn: !Sub '${BuildRole.Arn}'
+                RoleArn: !Sub '${CloudFormationDeployRole.Arn}'
                 TemplatePath: 'CloudFormationArtifact::build/packaged.yml'
       Tags:
         - Key: 'Application'
