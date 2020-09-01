@@ -98,8 +98,17 @@ Resources:
             Principal:
               Service: 
                 - !Sub 'cloudformation.${AWS::URLSuffix}'
-      # ManagedPolicyArns:
-      #   - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess'
+      Policies:
+        - PolicyName: 'cloudformation-deploy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'cloudformation:*'
+                Resource:
+                  - !Sub '${AWS::StackId}'
+                  - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:aws:transform/*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
