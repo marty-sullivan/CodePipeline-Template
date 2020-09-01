@@ -336,6 +336,12 @@ Resources:
                 Resource:
                   - !Sub '${AWS::StackId}'
                   - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:aws:transform/*'
+              - Effect: 'Allow'
+                Action:
+                  - 'ssm:GetParameter*'
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CodePipeline/GitHub'
+                  - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${Application}/${Environment}/*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
