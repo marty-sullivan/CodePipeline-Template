@@ -34,8 +34,8 @@ Parameters:
     
 Outputs:
 
-  EcsRepository:
-    Value: !Sub '${ComputeStack.Outputs.EcsRepository}'
+  # EcsRepository:
+  #   Value: !Sub '${ComputeStack.Outputs.EcsRepository}'
 
   # Api:
   #   Value: !Sub '${Api}'
