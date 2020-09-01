@@ -19,6 +19,5 @@ phases:
 artifacts:
 
   CloudFormationArtifact:
-    base-directory: '$CODEBUILD_SRC_DIR'
     files:
       - 'build/packaged.yml'
