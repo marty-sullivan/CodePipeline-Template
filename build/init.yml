@@ -162,6 +162,7 @@ Resources:
                 Resource:
                   - !Sub 'arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/${Application}-${Environment}*'
                   - !Sub 'arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:${Application}-${Environment}*'
+                  - !Sub 'arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:webhook:*'
                   - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${Application}-${Environment}*'
                   - !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${Application}-${Environment}*'
                   - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*${Application}-${Environment}*'
@@ -315,3 +316,16 @@ Resources:
         - Key: 'Resource'
           Value: !Sub 'build-pipeline'
   
+  BuildPipelineWebhook:
+    Type: 'AWS::CodePipeline::Webhook'
+    Properties:
+      Authentication: 'GITHUB_HMAC'
+      AuthenticationConfiguration:
+        SecretToken: '{{resolve:ssm:/CodePipeline/GitHub:1}}'
+      Filters:
+        - JsonPath: '$.ref'
+          MatchEquals: !Sub 'refs/heads/${Environment}'
+      RegisterWithThirdParty: true
+      TargetAction: 'SourceAction'
+      TargetPipeline: !Sub '${BuildPipeline}'
+      TargetPipelineVersion: !Sub '${BuildPipeline.Version}'

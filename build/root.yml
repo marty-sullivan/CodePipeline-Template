@@ -142,22 +142,22 @@ Resources:
 
   # Web
   
-  WebStack:
-    Type: 'AWS::CloudFormation::Stack'
-    Properties:
-      TemplateURL: './web.yml'
-      Parameters:
-        Application: !Sub '${Application}'
-        Environment: !Sub '${Environment}'
-        DomainName: !Sub '${DomainName}'
-        CloudFormationDeployRole: !Sub '${CloudFormationDeployRole}'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-web-stack'
+  # WebStack:
+  #   Type: 'AWS::CloudFormation::Stack'
+  #   Properties:
+  #     TemplateURL: './web.yml'
+  #     Parameters:
+  #       Application: !Sub '${Application}'
+  #       Environment: !Sub '${Environment}'
+  #       DomainName: !Sub '${DomainName}'
+  #       CloudFormationDeployRole: !Sub '${CloudFormationDeployRole}'
+  #     Tags:
+  #       - Key: 'Application'
+  #         Value: !Sub '${Application}'
+  #       - Key: 'Environment'
+  #         Value: !Sub '${Environment}'
+  #       - Key: 'Resource'
+  #         Value: !Sub '${Application}-${Environment}-web-stack'
 
   # Build
   
@@ -287,6 +287,7 @@ Resources:
                 Resource:
                   - !Sub 'arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/${Application}-${Environment}*'
                   - !Sub 'arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:${Application}-${Environment}*'
+                  - !Sub 'arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:webhook:*'
                   - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${Application}-${Environment}*'
                   - !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${Application}-${Environment}*'
                   - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*${Application}-${Environment}*'
