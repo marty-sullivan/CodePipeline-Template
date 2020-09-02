@@ -15,6 +15,10 @@ Parameters:
     Description: 'ARN of the CodeBuild Role'
     Type: 'String'
 
+  CloudFormationDeployRole:
+    Description: 'The IAM Role used by CloudFormation to deploy this stack'
+    Type: 'String'
+
 Outputs:
 
   # ECS Environment
@@ -81,10 +85,28 @@ Outputs:
 
 Resources:
 
+  DeployPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub '${Application}-${Environment}-compute-deploy-policy'
+      Roles:
+        - !Sub '${CloudFormationDeployRole}'
+      PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: 'Allow'
+              Action:
+                - 'ec2:*'
+                - 'ecs:*'
+              Resource:
+                - '*'
+
   # ECS Environment
 
   EcsCluster:
     Type: 'AWS::ECS::Cluster'
+    DependsOn:
+      - 'DeployPolicy'
     Properties:
       ClusterSettings: 
         - Name: 'containerInsights'
@@ -141,6 +163,8 @@ Resources:
 
   EcsLogGroup:
     Type: 'AWS::Logs::LogGroup'
+    DependsOn:
+      - 'DeployPolicy'
     Properties:
       LogGroupName: !Sub '/${Application}/${Environment}/ecs'
       RetentionInDays: 14
@@ -269,114 +293,116 @@ Resources:
 
   # Batch Environment
   
-  BatchComputeEnvironment:
-    Type: 'AWS::Batch::ComputeEnvironment'
-    Properties:
-      State: 'ENABLED'
-      Type: 'MANAGED'
-      ServiceRole: !Sub '${BatchServiceRole.Arn}'
-      ComputeResources:
-        Type: 'SPOT'
-        DesiredvCpus: 0
-        MaxvCpus: 10
-        MinvCpus: 0
-        InstanceRole: !Sub '${BatchInstanceProfile.Arn}'
-        SpotIamFleetRole: !Sub '${SpotFleetServiceRole.Arn}'
-        InstanceTypes:
-          - 'm3.medium'
-        SecurityGroupIds:
-          - !Sub '${Vpc.DefaultSecurityGroup}'
-        Subnets:
-          - !Sub '${SubnetA}'
-          - !Sub '${SubnetB}'
-          - !Sub '${SubnetC}'
-          - !Sub '${SubnetD}'
-          - !Sub '${SubnetE}'
-          - !Sub '${SubnetF}'
-        Tags: 
-          Application: !Sub '${Application}'
-          Environment: !Sub '${Environment}'
-          Resource: !Sub '${Application}-${Environment}-batch-compute'
-          Name: !Sub '${Application}-${Environment}-batch-compute'
+  # BatchComputeEnvironment:
+  #   Type: 'AWS::Batch::ComputeEnvironment'
+  #   Properties:
+  #     State: 'ENABLED'
+  #     Type: 'MANAGED'
+  #     ServiceRole: !Sub '${BatchServiceRole.Arn}'
+  #     ComputeResources:
+  #       Type: 'SPOT'
+  #       DesiredvCpus: 0
+  #       MaxvCpus: 10
+  #       MinvCpus: 0
+  #       InstanceRole: !Sub '${BatchInstanceProfile.Arn}'
+  #       SpotIamFleetRole: !Sub '${SpotFleetServiceRole.Arn}'
+  #       InstanceTypes:
+  #         - 'm3.medium'
+  #       SecurityGroupIds:
+  #         - !Sub '${Vpc.DefaultSecurityGroup}'
+  #       Subnets:
+  #         - !Sub '${SubnetA}'
+  #         - !Sub '${SubnetB}'
+  #         - !Sub '${SubnetC}'
+  #         - !Sub '${SubnetD}'
+  #         - !Sub '${SubnetE}'
+  #         - !Sub '${SubnetF}'
+  #       Tags: 
+  #         Application: !Sub '${Application}'
+  #         Environment: !Sub '${Environment}'
+  #         Resource: !Sub '${Application}-${Environment}-batch-compute'
+  #         Name: !Sub '${Application}-${Environment}-batch-compute'
 
-  BatchJobQueue:
-    Type: 'AWS::Batch::JobQueue'
-    Properties:
-      State: 'ENABLED'
-      Priority: 100
-      ComputeEnvironmentOrder:
-        - ComputeEnvironment: !Sub '${BatchComputeEnvironment}'
-          Order: 1
+  # BatchJobQueue:
+  #   Type: 'AWS::Batch::JobQueue'
+  #   Properties:
+  #     State: 'ENABLED'
+  #     Priority: 100
+  #     ComputeEnvironmentOrder:
+  #       - ComputeEnvironment: !Sub '${BatchComputeEnvironment}'
+  #         Order: 1
 
   # EFS
   
-  FileSystem:
-    Type: 'AWS::EFS::FileSystem'
-    Properties:
-      PerformanceMode: 'generalPurpose'
-      ThroughputMode: 'bursting'
-      FileSystemTags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-filesystem'
-        - Key: 'Name'
-          Value: !Sub '${Application}-${Environment}'
+  # FileSystem:
+  #   Type: 'AWS::EFS::FileSystem'
+  #   Properties:
+  #     PerformanceMode: 'generalPurpose'
+  #     ThroughputMode: 'bursting'
+  #     FileSystemTags:
+  #       - Key: 'Application'
+  #         Value: !Sub '${Application}'
+  #       - Key: 'Environment'
+  #         Value: !Sub '${Environment}'
+  #       - Key: 'Resource'
+  #         Value: !Sub '${Application}-${Environment}-filesystem'
+  #       - Key: 'Name'
+  #         Value: !Sub '${Application}-${Environment}'
 
-  MountTargetA:
-    Type: 'AWS::EFS::MountTarget'
-    Properties:
-      FileSystemId: !Sub '${FileSystem}'
-      SubnetId: !Sub '${SubnetA}'
-      SecurityGroups:
-        - !Sub '${Vpc.DefaultSecurityGroup}'
+  # MountTargetA:
+  #   Type: 'AWS::EFS::MountTarget'
+  #   Properties:
+  #     FileSystemId: !Sub '${FileSystem}'
+  #     SubnetId: !Sub '${SubnetA}'
+  #     SecurityGroups:
+  #       - !Sub '${Vpc.DefaultSecurityGroup}'
       
-  MountTargetB:
-    Type: 'AWS::EFS::MountTarget'
-    Properties:
-      FileSystemId: !Sub '${FileSystem}'
-      SubnetId: !Sub '${SubnetB}'
-      SecurityGroups:
-        - !Sub '${Vpc.DefaultSecurityGroup}'
+  # MountTargetB:
+  #   Type: 'AWS::EFS::MountTarget'
+  #   Properties:
+  #     FileSystemId: !Sub '${FileSystem}'
+  #     SubnetId: !Sub '${SubnetB}'
+  #     SecurityGroups:
+  #       - !Sub '${Vpc.DefaultSecurityGroup}'
       
-  MountTargetC:
-    Type: 'AWS::EFS::MountTarget'
-    Properties:
-      FileSystemId: !Sub '${FileSystem}'
-      SubnetId: !Sub '${SubnetC}'
-      SecurityGroups:
-        - !Sub '${Vpc.DefaultSecurityGroup}'
+  # MountTargetC:
+  #   Type: 'AWS::EFS::MountTarget'
+  #   Properties:
+  #     FileSystemId: !Sub '${FileSystem}'
+  #     SubnetId: !Sub '${SubnetC}'
+  #     SecurityGroups:
+  #       - !Sub '${Vpc.DefaultSecurityGroup}'
       
-  MountTargetD:
-    Type: 'AWS::EFS::MountTarget'
-    Properties:
-      FileSystemId: !Sub '${FileSystem}'
-      SubnetId: !Sub '${SubnetD}'
-      SecurityGroups:
-        - !Sub '${Vpc.DefaultSecurityGroup}'
+  # MountTargetD:
+  #   Type: 'AWS::EFS::MountTarget'
+  #   Properties:
+  #     FileSystemId: !Sub '${FileSystem}'
+  #     SubnetId: !Sub '${SubnetD}'
+  #     SecurityGroups:
+  #       - !Sub '${Vpc.DefaultSecurityGroup}'
       
-  MountTargetE:
-    Type: 'AWS::EFS::MountTarget'
-    Properties:
-      FileSystemId: !Sub '${FileSystem}'
-      SubnetId: !Sub '${SubnetE}'
-      SecurityGroups:
-        - !Sub '${Vpc.DefaultSecurityGroup}'
+  # MountTargetE:
+  #   Type: 'AWS::EFS::MountTarget'
+  #   Properties:
+  #     FileSystemId: !Sub '${FileSystem}'
+  #     SubnetId: !Sub '${SubnetE}'
+  #     SecurityGroups:
+  #       - !Sub '${Vpc.DefaultSecurityGroup}'
       
-  MountTargetF:
-    Type: 'AWS::EFS::MountTarget'
-    Properties:
-      FileSystemId: !Sub '${FileSystem}'
-      SubnetId: !Sub '${SubnetF}'
-      SecurityGroups:
-        - !Sub '${Vpc.DefaultSecurityGroup}'
+  # MountTargetF:
+  #   Type: 'AWS::EFS::MountTarget'
+  #   Properties:
+  #     FileSystemId: !Sub '${FileSystem}'
+  #     SubnetId: !Sub '${SubnetF}'
+  #     SecurityGroups:
+  #       - !Sub '${Vpc.DefaultSecurityGroup}'
       
   # VPC
 
   Vpc:
     Type: 'AWS::EC2::VPC'
+    DependsOn:
+      - 'DeployPolicy'
     Properties:
       CidrBlock: '10.0.0.0/16'
       EnableDnsHostnames: true
@@ -393,6 +419,8 @@ Resources:
   
   InternetGateway:
     Type: 'AWS::EC2::InternetGateway'
+    DependsOn:
+      - 'DeployPolicy'
     Properties:
       Tags:
         - Key: 'Application'
