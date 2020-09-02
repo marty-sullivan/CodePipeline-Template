@@ -32,36 +32,20 @@ Parameters:
     Description: 'Phone number to which administrative alerts are sent via SMS'
     Type: 'String'
     
-Outputs:
+# Outputs:
 
-  # EcsRepository:
-  #   Value: !Sub '${ComputeStack.Outputs.EcsRepository}'
+#   # EcsRepository:
+#   #   Value: !Sub '${ComputeStack.Outputs.EcsRepository}'
 
-  # Api:
-  #   Value: !Sub '${Api}'
+#   # Api:
+#   #   Value: !Sub '${Api}'
   
-  # WebBucket:
-  #   Value: !Sub '${WebStack.Outputs.WebBucket}'
+#   # WebBucket:
+#   #   Value: !Sub '${WebStack.Outputs.WebBucket}'
 
-  BuildBucket:
-    Value: !Sub '${BuildBucket}'
+#   BuildBucket:
+#     Value: !Sub '${BuildBucket}'
 
-Globals:
-  
-  Function:
-    Handler: 'index.lambda_handler'
-    MemorySize: 128
-    Runtime: 'python3.8'
-    Timeout: 900
-    Tags:
-      Application: !Sub '${Application}'
-      Environment: !Sub '${Environment}'
-    Environment:
-      Variables:
-        APPLICATION: !Sub '${Application}'
-        ENVIRONMENT: !Sub '${Environment}'
-        AWS_ACCOUNT_ID: !Sub '${AWS::AccountId}'
-        
 Resources:
 
   # Containers
@@ -138,37 +122,6 @@ Resources:
   #       - Key: 'Resource'
   #         Value: !Sub '${Application}-${Environment}-example-ecs-task'
 
-  # Functions
-  
-  ExampleFunction:
-    Type: 'AWS::Serverless::Function'
-    Properties:
-      CodeUri: './lambdas/example'
-      Tags:
-        Resource: !Sub '${Application}-example-function'
-      # Events:
-      #   ApiExampleGetResource:
-      #     Type: 'Api'
-      #     Properties:
-      #       Path: '/example'
-      #       Method: 'GET'
-      #       RestApiId: !Ref 'Api'
-      Policies:
-        - 'AWSLambdaBasicExecutionRole'
-        # - Version: '2012-10-17'
-        #   Statement:
-        #     - Effect: 'Allow'
-        #       Action:
-        #         - ''
-        #       Resource:
-        #         - !Sub ''
-
-  ExampleFunctionLogs:
-    Type: 'AWS::Logs::LogGroup'
-    Properties:
-      LogGroupName: !Sub '/aws/lambda/${ExampleFunction}'
-      RetentionInDays: 14
-      
   # Compute
   
   # ComputeStack:

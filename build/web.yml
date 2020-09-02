@@ -33,6 +33,22 @@ Outputs:
   WebLogsBucket:
     Value: !Sub '${LogsBucket}'
 
+Globals:
+  
+  Function:
+    Handler: 'index.lambda_handler'
+    MemorySize: 128
+    Runtime: 'python3.8'
+    Timeout: 30
+    Tags:
+      Application: !Sub '${Application}'
+      Environment: !Sub '${Environment}'
+    Environment:
+      Variables:
+        APPLICATION: !Sub '${Application}'
+        ENVIRONMENT: !Sub '${Environment}'
+        AWS_ACCOUNT_ID: !Sub '${AWS::AccountId}'
+        
 Resources:
 
   # Certificate:
@@ -105,6 +121,37 @@ Resources:
   #     DomainName: !Sub '${ApiDomain}'
   #     RestApiId: !Sub '${Api}'
   
+  # Functions
+  
+  ExampleFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      CodeUri: './lambdas/example'
+      Tags:
+        Resource: !Sub 'example-function'
+      Events:
+        ApiExampleGetResource:
+          Type: 'Api'
+          Properties:
+            Path: '/example'
+            Method: 'GET'
+            RestApiId: !Sub '${Api}'
+      Policies:
+        - 'AWSLambdaBasicExecutionRole'
+        # - Version: '2012-10-17'
+        #   Statement:
+        #     - Effect: 'Allow'
+        #       Action:
+        #         - ''
+        #       Resource:
+        #         - !Sub ''
+
+  ExampleFunctionLogs:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ExampleFunction}'
+      RetentionInDays: 14
+      
   # HostedZone:
   #   Type: 'AWS::Route53::HostedZone'
   #   Properties:
