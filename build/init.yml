@@ -227,6 +227,11 @@ Resources:
                   - !Sub '${CloudFormationBuildProject.Arn}'
               - Effect: 'Allow'
                 Action:
+                  - 'iam:PassRole'
+                Resource:
+                  - !Sub '${CloudFormationBuildRole.Arn}'
+              - Effect: 'Allow'
+                Action:
                   - 's3:GetObject'
                   - 's3:PutObject'
                 Resource:
