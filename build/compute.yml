@@ -287,6 +287,8 @@ Resources:
 
   BatchInstanceProfile:
     Type: 'AWS::IAM::InstanceProfile'
+    DependsOn:
+      - 'DeployPolicy'
     Properties:
       Roles:
         - !Sub '${BatchInstanceRole}'
