@@ -135,7 +135,7 @@ Resources:
           Properties:
             Path: '/example'
             Method: 'GET'
-            RestApiId: !Sub '${Api}'
+            RestApiId: !Ref 'Api'
       Policies:
         - 'AWSLambdaBasicExecutionRole'
         # - Version: '2012-10-17'
