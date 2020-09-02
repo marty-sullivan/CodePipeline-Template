@@ -229,7 +229,7 @@ Resources:
                 Action:
                   - 'iam:PassRole'
                 Resource:
-                  - !Sub '${CloudFormationBuildRole.Arn}'
+                  - !Sub '${CloudFormationDeployRole.Arn}'
               - Effect: 'Allow'
                 Action:
                   - 's3:GetObject'
