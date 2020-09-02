@@ -83,6 +83,12 @@ Resources:
             Statement:
               - Effect: 'Allow'
                 Action:
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Application}-${Environment}-cloudformation'
+              - Effect: 'Allow'
+                Action:
                   - 's3:GetObject'
                   - 's3:PutObject'
                 Resource:
