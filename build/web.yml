@@ -294,6 +294,6 @@ Resources:
           ForwardedValues:
             QueryString: false
         ViewerCertificate:
-          AcmCertificateArn: !Sub '${Certificate}'
+          AcmCertificateArn: !Sub '${WebDistributionCertificate}'
           MinimumProtocolVersion: 'TLSv1.1_2016'
           SslSupportMethod: 'sni-only'
