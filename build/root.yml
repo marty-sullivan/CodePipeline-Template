@@ -357,7 +357,7 @@ Resources:
                   - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*${Application}-${Environment}*'
               - Effect: 'Allow'
                 Action:
-                  - 's3:*'
+                  - 's3:*Bucket*'
                 Resource:
                   - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}*'
               - Effect: 'Allow'
@@ -377,6 +377,11 @@ Resources:
                 Resource:
                   - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CodePipeline/GitHub'
                   - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${Application}/${Environment}/*'
+              - Effect: 'Allow'
+                Action:
+                  - 'logs:DescribeLogGroups'
+                Resource:
+                  - '*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'

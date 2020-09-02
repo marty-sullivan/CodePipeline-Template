@@ -150,6 +150,11 @@ Resources:
                 Resource:
                   - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CodePipeline/GitHub'
                   - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${Application}/${Environment}/*'
+              - Effect: 'Allow'
+                Action:
+                  - 'logs:DescribeLogGroups'
+                Resource:
+                  - '*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
