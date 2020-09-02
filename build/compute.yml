@@ -98,6 +98,8 @@ Resources:
               Action:
                 - 'ec2:*'
                 - 'ecs:*'
+                - 'ecr:*'
+                - 'iam:RemoveRoleFromInstanceProfile'
               Resource:
                 - '*'
 
