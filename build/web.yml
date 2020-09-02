@@ -16,10 +16,6 @@ Parameters:
     Description: 'The base domain name for the website'
     Type: 'String'
   
-  # Api:
-  #   Description: 'The API Gateway ID'
-  #   Type: 'String'
-    
   CloudFrontHostedZone:
     Default: 'Z2FDTNDATAQYW2'
     Description: 'The Hosted Zone for the Global CloudFront service'
