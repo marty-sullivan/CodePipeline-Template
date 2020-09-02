@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
 Description: 'Standard Web Template'
 
 Parameters:
@@ -15,13 +16,13 @@ Parameters:
     Description: 'The base domain name for the website'
     Type: 'String'
   
-  Api:
-    Description: 'The API Gateway ID'
-    Type: 'String'
+  # Api:
+  #   Description: 'The API Gateway ID'
+  #   Type: 'String'
     
   CloudFrontHostedZone:
     Default: 'Z2FDTNDATAQYW2'
-    Description: 'The Hosted Zone that the CloudFront service uses'
+    Description: 'The Hosted Zone for the Global CloudFront service'
     Type: 'String'
 
 Outputs:
@@ -47,6 +48,48 @@ Resources:
         - Key: 'Resource'
           Value: !Sub '${Application}-${Environment}-certificate'
   
+  # Api
+  
+  Api:
+    Type: 'AWS::Serverless::Api'
+    Properties:
+      EndpointConfiguration: 'REGIONAL'
+      StageName: 'api'
+      DefinitionBody:
+        swagger: 2.0
+        info:
+          title: !Sub '${Application}-${Environment}'
+        securityDefinitions:
+          api_key:
+            type: 'apiKey'
+            name: 'x-api-key'
+            in: 'header'
+        paths:
+          '/example':
+            get:
+              # security:
+              #   - api_key: []
+              x-amazon-apigateway-integration:
+                type: 'aws_proxy'
+                httpMethod: 'POST'
+                responses: { }
+                uri:
+                  !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ExampleFunction.Arn}/invocations'
+
+  ApiUsagePlan:
+    Type: 'AWS::ApiGateway::UsagePlan'
+    DependsOn: 
+      - 'ApiapiStage'
+    Properties:
+      UsagePlanName: !Sub '${Application}-${Environment}'
+      Description: !Sub 'Usage Plan for ${Application}-${Environment}'
+      ApiStages:
+        - ApiId: !Sub '${Api}'
+          Stage: 'api'
+          #Throttle:
+      #Quota:
+      #Throttle:
+
   ApiDomain:
     Type: 'AWS::ApiGateway::DomainName'
     Properties:
