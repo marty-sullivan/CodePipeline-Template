@@ -25,13 +25,13 @@ Parameters:
     Description: 'The Hosted Zone for the Global CloudFront service'
     Type: 'String'
 
-Outputs:
+# Outputs:
 
-  WebBucket:
-    Value: !Sub '${WebBucket}'
+#   WebBucket:
+#     Value: !Sub '${WebBucket}'
 
-  WebLogsBucket:
-    Value: !Sub '${LogsBucket}'
+#   WebLogsBucket:
+#     Value: !Sub '${LogsBucket}'
 
 Globals:
   
