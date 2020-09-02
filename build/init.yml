@@ -65,7 +65,7 @@ Resources:
         - Key: 'Resource'
           Value: !Sub 'build-bucket'
 
-  BuildRole:
+  CloudFormationBuildRole:
     Type: 'AWS::IAM::Role'
     Properties:
       AssumeRolePolicyDocument:
@@ -76,17 +76,62 @@ Resources:
             Principal:
               Service: 
                 - !Sub 'codebuild.${AWS::URLSuffix}'
-                - !Sub 'codepipeline.${AWS::URLSuffix}'
-      ManagedPolicyArns:
-        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess'
+      Policies:
+        - PolicyName: 'cloudformation-build'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                Resource:
+                  - !Sub '${BuildBucket.Arn}/*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub 'build-role'
+          Value: !Sub 'cloudformation-build-role'
   
+  CloudFormationBuildLogs:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${CloudFormationBuildProject}'
+      
+  CloudFormationBuildProject:
+    Type: 'AWS::CodeBuild::Project'
+    Properties:
+      Name: !Sub '${Application}-${Environment}-cloudformation'
+      TimeoutInMinutes: 5
+      Artifacts:
+        Type: 'CODEPIPELINE'
+      Cache:
+        Type: 'NO_CACHE'
+      ServiceRole: !Sub '${CloudFormationBuildRole.Arn}'
+      Source:
+        Type: 'CODEPIPELINE'
+        BuildSpec: 'build/buildspec_cfn.yml'
+      Environment:
+        ComputeType: 'BUILD_GENERAL1_SMALL'
+        Image: 'aws/codebuild/amazonlinux2-x86_64-standard:3.0'
+        Type: 'LINUX_CONTAINER'
+        EnvironmentVariables:
+          - Name: 'APPLICATION'
+            Value: !Sub '${Application}'
+          - Name: 'ENVIRONMENT'
+            Value: !Sub '${Environment}'
+          - Name: 'BUILD_BUCKET'
+            Value: !Sub '${BuildBucket}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub 'build-project'
+
   CloudFormationDeployRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -148,51 +193,38 @@ Resources:
         - Key: 'Resource'
           Value: !Sub 'cloudformation-deploy-role'
   
-  CloudFormationBuildLogs:
-    Type: 'AWS::Logs::LogGroup'
+  BuildPipelineRole:
+    Type: 'AWS::IAM::Role'
     Properties:
-      LogGroupName: !Sub '/aws/codebuild/${CloudFormationBuildProject}'
-      
-  CloudFormationBuildProject:
-    Type: 'AWS::CodeBuild::Project'
-    Properties:
-      Name: !Sub '${Application}-${Environment}-cloudformation'
-      TimeoutInMinutes: 5
-      Artifacts:
-        Type: 'CODEPIPELINE'
-      Cache:
-        Type: 'NO_CACHE'
-      ServiceRole: !Sub '${BuildRole.Arn}'
-      Source:
-        Type: 'CODEPIPELINE'
-        BuildSpec: 'build/buildspec_cfn.yml'
-      Environment:
-        ComputeType: 'BUILD_GENERAL1_SMALL'
-        Image: 'aws/codebuild/amazonlinux2-x86_64-standard:3.0'
-        Type: 'LINUX_CONTAINER'
-        EnvironmentVariables:
-          - Name: 'APPLICATION'
-            Value: !Sub '${Application}'
-          - Name: 'ENVIRONMENT'
-            Value: !Sub '${Environment}'
-          - Name: 'BUILD_BUCKET'
-            Value: !Sub '${BuildBucket}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action: 'sts:AssumeRole'
+            Principal:
+              Service: 
+                - !Sub 'codepipeline.${AWS::URLSuffix}'
+      # Policies:
+      #   - PolicyName: 'codepipeline'
+      #     PolicyDocument:
+      #       Version: '2012-10-17'
+      #       Statement:
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub 'build-project'
-
+          Value: !Sub 'build-pipeline-role'
+  
   BuildPipeline:
     Type: 'AWS::CodePipeline::Pipeline'
     Properties:
       ArtifactStore:
         Location: !Sub '${BuildBucket}'
         Type: 'S3'
-      RestartExecutionOnUpdate: false
-      RoleArn: !Sub '${BuildRole.Arn}'
+      RestartExecutionOnUpdate: true
+      RoleArn: !Sub '${BuildPipelineRole.Arn}'
       Stages:
         - Name: 'Source'
           Actions:
