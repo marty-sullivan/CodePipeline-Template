@@ -3,10 +3,10 @@
 source ./config.sh
 export ENVIRONMENT="$1"
 
-if [[ ! "$APPLICATION" =~ ^[A-Z][a-zA-Z0-9]*$ ]]
+if [[ ! "$APPLICATION" =~ ^[a-z][a-z0-9]*$ ]]
 then
 
-  echo "ERROR: APPLICATION must start with an uppercase letter and contain only letters and numbers"
+  echo "ERROR: APPLICATION must start with a lowercase letter and contain only lowercase letters and numbers"
   exit 1
 
 fi
@@ -14,7 +14,7 @@ fi
 if [[ ! "$ENVIRONMENT" =~ ^[a-z][a-z0-9]*$ ]]
 then
 
-  echo "ERROR: ENVIRONMENT (\$1) must start with an lowercase letter and contain only lowercase letters and numbers"
+  echo "ERROR: ENVIRONMENT (\$1) must start with a lowercase letter and contain only lowercase letters and numbers"
   exit 1
 
 fi

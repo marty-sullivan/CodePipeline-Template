@@ -357,6 +357,11 @@ Resources:
                   - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*${Application}-${Environment}*'
               - Effect: 'Allow'
                 Action:
+                  - 's3:*'
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}*'
+              - Effect: 'Allow'
+                Action:
                   - 'cloudformation:*'
                 Resource:
                   - !Sub '${AWS::StackId}'
@@ -365,18 +370,13 @@ Resources:
                 Action:
                   - 's3:GetObject'
                 Resource:
-                  - !Sub '${BuildBucket.Arn}'
+                  - !Sub '${BuildBucket.Arn}/*'
               - Effect: 'Allow'
                 Action:
                   - 'ssm:GetParameter*'
                 Resource:
                   - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CodePipeline/GitHub'
                   - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${Application}/${Environment}/*'
-              - Effect: 'Allow'
-                Action:
-                  - 's3:*Bucket*'
-                Resource:
-                  - '*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'

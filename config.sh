@@ -1,4 +1,4 @@
-export APPLICATION="ServerlessTemplate"
+export APPLICATION="serverlesstemplate"
 export DOMAIN_NAME="serverlesstemplate.martysullivan.com"
 export GITHUB_OWNER="marty-sullivan"
 export GITHUB_REPO="serverless-template"
