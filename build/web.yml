@@ -51,30 +51,32 @@ Globals:
         
 Resources:
 
-  # DeployPolicy:
-  #   Type: 'AWS::IAM::Policy'
-  #   Properties:
-  #     PolicyName: !Sub '${Application}-${Environment}-web-deploy-policy'
-  #     Roles:
-  #       - !Sub '${CloudFormationDeployRole}'
-  #     PolicyDocument:
-  #         Version: '2012-10-17'
-  #         Statement:
-  #           - Effect: 'Allow'
-  #             Action:
-  #               - 'codebuild:*'
-  #               - 'codepipeline:*'
-  #               - 'iam:*'
-  #               - 'lambda:*'
-  #               - 'logs:*'
-  #               - 's3:*Bucket*'
-  #             Resource:
-  #               - !Sub 'arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/${Application}-${Environment}*'
+  DeployPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub '${Application}-${Environment}-web-deploy-policy'
+      Roles:
+        - !Sub '${CloudFormationDeployRole}'
+      PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: 'Allow'
+              Action:
+                - 'acm:*'
+                - 'apigateway:*'
+                - 'athena:*'
+                - 'cloudfront:*'
+                - 'glue:*'
+                - 'route53:*'
+              Resource:
+                - '*'
 
   # Api
 
   Api:
     Type: 'AWS::Serverless::Api'
+    DependsOn:
+      - 'DeployPolicy'
     Properties:
       EndpointConfiguration: 'REGIONAL'
       StageName: 'api'
@@ -163,6 +165,8 @@ Resources:
       
   HostedZone:
     Type: 'AWS::Route53::HostedZone'
+    DependsOn:
+      - 'DeployPolicy'
     Properties:
       Name: !Sub '${DomainName}'
       HostedZoneConfig:
@@ -210,6 +214,8 @@ Resources:
   
   WebAnalyticsWorkgroup:
     Type: 'AWS::Athena::WorkGroup'
+    DependsOn:
+      - 'DeployPolicy'
     Properties:
       Name: !Sub '${Application}-${Environment}-web-analytics'
       State: 'ENABLED'
@@ -231,6 +237,8 @@ Resources:
 
   WebAnalyticsDatabase:
     Type: 'AWS::Glue::Database'
+    DependsOn:
+      - 'DeployPolicy'
     Properties:
       CatalogId: !Sub '${AWS::AccountId}'
       DatabaseInput:
@@ -364,12 +372,16 @@ Resources:
   
   WebDistributionIdentity:
     Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    DependsOn:
+      - 'DeployPolicy'
     Properties:
       CloudFrontOriginAccessIdentityConfig:
         Comment: !Sub '${Application}-${Environment}-id'
   
   WebDistributionCertificate:
     Type: 'AWS::CertificateManager::Certificate'
+    DependsOn:
+      - 'DeployPolicy'
     Properties:
       DomainName: !Sub '${DomainName}'
       ValidationMethod: 'DNS'
