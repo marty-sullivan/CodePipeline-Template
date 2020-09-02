@@ -440,3 +440,16 @@ Resources:
         - Key: 'Resource'
           Value: !Sub 'build-pipeline'
   
+  BuildPipelineWebhook:
+    Type: 'AWS::CodePipeline::Webhook'
+    Properties:
+      Authentication: 'GITHUB_HMAC'
+      AuthenticationConfiguration:
+        SecretToken: '{{resolve:ssm:/CodePipeline/GitHub:1}}'
+      Filters:
+        - JsonPath: '$.ref'
+          MatchEquals: !Sub 'refs/heads/${Environment}'
+      RegisterWithThirdParty: true
+      TargetAction: 'SourceAction'
+      TargetPipeline: !Sub '${BuildPipeline}'
+      TargetPipelineVersion: !Sub '${BuildPipeline.Version}'
