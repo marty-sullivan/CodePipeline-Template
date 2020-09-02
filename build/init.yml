@@ -137,7 +137,6 @@ Resources:
               - Effect: 'Allow'
                 Action:
                   - 's3:GetObject'
-                  - 's3:*Bucket*'
                 Resource:
                   - !Sub '${BuildBucket.Arn}'
               - Effect: 'Allow'
@@ -146,6 +145,11 @@ Resources:
                 Resource:
                   - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CodePipeline/GitHub'
                   - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${Application}/${Environment}/*'
+              - Effect: 'Allow'
+                Action:
+                  - 's3:*Bucket*'
+                Resource:
+                  - '*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
