@@ -241,7 +241,7 @@ Resources:
     Type: 'AWS::Glue::Table'
     Properties:
       CatalogId: !Sub '${AWS::AccountId}'
-      DatabaseName: !Sub '${AnalyticsDatabase}'
+      DatabaseName: !Sub '${WebAnalyticsDatabase}'
       TableInput:
         Name: 'cloudfront_raw'
         Description: !Sub 'Raw CloudFront Requests Table for ${Application}-${Environment}'
