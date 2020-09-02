@@ -19,69 +19,69 @@ Parameters:
     Description: 'The IAM Role used by CloudFormation to deploy this stack'
     Type: 'String'
 
-Outputs:
+# Outputs:
 
-  # ECS Environment
+#   # ECS Environment
   
-  EcsCluster:
-    Value: !Sub '${EcsCluster}'
+#   EcsCluster:
+#     Value: !Sub '${EcsCluster}'
 
-  EcsTaskExecutionRole:
-    Value: !Sub '${EcsTaskExecutionRole.Arn}'
+#   EcsTaskExecutionRole:
+#     Value: !Sub '${EcsTaskExecutionRole.Arn}'
 
-  EcsLogGroup: 
-    Value: !Sub '${EcsLogGroup}'
+#   EcsLogGroup: 
+#     Value: !Sub '${EcsLogGroup}'
 
-  EcsRepository:
-    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}'
+#   EcsRepository:
+#     Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}'
 
-  # Batch Environment
+#   # Batch Environment
   
-  BatchServiceRole:
-    Value: !Sub '${BatchServiceRole.Arn}'
+#   BatchServiceRole:
+#     Value: !Sub '${BatchServiceRole.Arn}'
   
-  SpotFleetServiceRole:
-    Value: !Sub '${SpotFleetServiceRole.Arn}'
+#   SpotFleetServiceRole:
+#     Value: !Sub '${SpotFleetServiceRole.Arn}'
   
-  BatchInstanceRole:
-    Value: !Sub '${BatchInstanceRole.Arn}'
+#   BatchInstanceRole:
+#     Value: !Sub '${BatchInstanceRole.Arn}'
   
-  BatchInstanceProfile:
-    Value: !Sub '${BatchInstanceProfile.Arn}'
+#   BatchInstanceProfile:
+#     Value: !Sub '${BatchInstanceProfile.Arn}'
   
-  BatchJobQueue:
-    Value: !Sub '${BatchJobQueue}'
+#   BatchJobQueue:
+#     Value: !Sub '${BatchJobQueue}'
   
-  # EFS
+#   # EFS
   
-  FileSystem:
-    Value: !Sub '${FileSystem}.efs.${AWS::Region}.${AWS::URLSuffix}'
+#   FileSystem:
+#     Value: !Sub '${FileSystem}.efs.${AWS::Region}.${AWS::URLSuffix}'
 
-  # VPC
+#   # VPC
 
-  Vpc:
-    Value: !Sub '${Vpc}'
+#   Vpc:
+#     Value: !Sub '${Vpc}'
   
-  DefaultSecurityGroup:
-    Value: !Sub '${Vpc.DefaultSecurityGroup}'
+#   DefaultSecurityGroup:
+#     Value: !Sub '${Vpc.DefaultSecurityGroup}'
   
-  SubnetA:
-    Value: !Sub '${SubnetA}'
+#   SubnetA:
+#     Value: !Sub '${SubnetA}'
 
-  SubnetB:
-    Value: !Sub '${SubnetB}'
+#   SubnetB:
+#     Value: !Sub '${SubnetB}'
 
-  SubnetC:
-    Value: !Sub '${SubnetC}'
+#   SubnetC:
+#     Value: !Sub '${SubnetC}'
 
-  SubnetD:
-    Value: !Sub '${SubnetD}'
+#   SubnetD:
+#     Value: !Sub '${SubnetD}'
 
-  SubnetE:
-    Value: !Sub '${SubnetE}'
+#   SubnetE:
+#     Value: !Sub '${SubnetE}'
 
-  SubnetF:
-    Value: !Sub '${SubnetF}'
+#   SubnetF:
+#     Value: !Sub '${SubnetF}'
 
 Resources:
 
