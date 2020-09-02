@@ -131,7 +131,7 @@ Resources:
       Parameters:
         Application: !Sub '${Application}'
         Environment: !Sub '${Environment}'
-        BuildRole: !Sub '${CloudFormationBuildRole}'
+        BuildRole: !Sub '${CloudFormationBuildRole.Arn}'
         CloudFormationDeployRole: !Sub '${CloudFormationDeployRole}'
       Tags:
         - Key: 'Application'
