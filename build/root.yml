@@ -444,8 +444,11 @@ Resources:
             Statement:
               - Effect: 'Allow'
                 Action:
-                  # - 'codebuild:*Get*'
-                  # - 'codebuild:List*'
+                  - 'cloudformation:*'
+                Resource:
+                  - !Sub '${AWS::StackId}'
+              - Effect: 'Allow'
+                Action:
                   - 'codebuild:*Build*'
                 Resource:
                   - !Sub '${CloudFormationBuildProject.Arn}'
