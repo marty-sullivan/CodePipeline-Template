@@ -91,7 +91,7 @@ Resources:
     Type: 'AWS::ApiGateway::DomainName'
     Properties:
       DomainName: !Sub '${DomainName}'
-      RegionalCertificateArn: !Sub '${Certificate}'
+      RegionalCertificateArn: !Sub '${WebDistributionCertificate}'
       EndpointConfiguration:
         Types:
           - 'REGIONAL'
