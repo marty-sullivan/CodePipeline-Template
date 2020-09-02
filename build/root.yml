@@ -50,23 +50,23 @@ Resources:
 
   # Containers
   
-  # ExampleTaskRole:
-  #   Type: 'AWS::IAM::Role'
-  #   Properties:
-  #     AssumeRolePolicyDocument:
-  #       Version: '2012-10-17'
-  #       Statement:
-  #         - Effect: 'Allow'
-  #           Action: 'sts:AssumeRole'
-  #           Principal:
-  #             Service: !Sub 'ecs-tasks.${AWS::URLSuffix}'
-  #     Tags:
-  #       - Key: 'Application'
-  #         Value: !Sub '${Application}'
-  #       - Key: 'Environment'
-  #         Value: !Sub '${Environment}'
-  #       - Key: 'Resource'
-  #         Value: !Sub '${Application}-${Environment}--task-role'
+  ExampleTaskRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action: 'sts:AssumeRole'
+            Principal:
+              Service: !Sub 'ecs-tasks.${AWS::URLSuffix}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-task-role'
   
   # ExampleBatchJobDefinition:
   #   Type: 'AWS::Batch::JobDefinition'
