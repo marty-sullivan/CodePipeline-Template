@@ -363,6 +363,11 @@ Resources:
                   - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:aws:transform/*'
               - Effect: 'Allow'
                 Action:
+                  - 's3:GetObject'
+                Resource:
+                  - !Sub '${BuildBucket.Arn}'
+              - Effect: 'Allow'
+                Action:
                   - 'ssm:GetParameter*'
                 Resource:
                   - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CodePipeline/GitHub'
