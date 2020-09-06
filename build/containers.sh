@@ -22,19 +22,19 @@ do
   
   fi
   
-  echo "Building Container $CONTAINER_NAME..."
+  echo "Building Container $CONTAINER_NAME-$(uname -m)..."
   
   cd $dir
   cp -LR $CODEBUILD_SRC_DIR/common/* ./
-  docker pull "$CONTAINER_REPO:$CONTAINER_NAME"
+  docker pull "$CONTAINER_REPO:$CONTAINER_NAME-$(uname -m)"
   
   docker build \
-    --cache-from "$CONTAINER_REPO:$CONTAINER_NAME" \
+    --cache-from "$CONTAINER_REPO:$CONTAINER_NAME-$(uname -m)" \
     --pull \
-    -t "$CONTAINER_REPO:$CONTAINER_NAME" \
+    -t "$CONTAINER_REPO:$CONTAINER_NAME-$(uname -m)" \
     .
   
-  docker push "$CONTAINER_REPO:$CONTAINER_NAME"
+  docker push "$CONTAINER_REPO:$CONTAINER_NAME-$(uname -m)"
   cd $ORIG_DIR
 
 done

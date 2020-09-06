@@ -32,10 +32,10 @@ Parameters:
     Description: 'Phone number to which administrative alerts are sent via SMS'
     Type: 'String'
     
-# Outputs:
+Outputs:
 
-#   # EcsRepository:
-#   #   Value: !Sub '${ComputeStack.Outputs.EcsRepository}'
+  EcsRepository:
+    Value: !Sub '${ComputeStack.Outputs.EcsRepository}'
 
 #   # Api:
 #   #   Value: !Sub '${Api}'
@@ -231,7 +231,7 @@ Resources:
     Type: 'AWS::CodeBuild::Project'
     Properties:
       Name: !Sub '${Application}-${Environment}-cloudformation'
-      TimeoutInMinutes: 5
+      TimeoutInMinutes: 15
       Artifacts:
         Type: 'CODEPIPELINE'
       Cache:
@@ -257,7 +257,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub 'build-project'
+          Value: !Sub 'cloudformation-build-project'
 
   CloudFormationDeployRole:
     Type: 'AWS::IAM::Role'
@@ -324,6 +324,84 @@ Resources:
         - Key: 'Resource'
           Value: !Sub 'cloudformation-deploy-role'
   
+  BatchBuildRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action: 'sts:AssumeRole'
+            Principal:
+              Service: 
+                - !Sub 'codebuild.${AWS::URLSuffix}'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess'
+      # Policies:
+      #   - PolicyName: 'cloudformation-build'
+      #     PolicyDocument:
+      #       Version: '2012-10-17'
+      #       Statement:
+      #         - Effect: 'Allow'
+      #           Action:
+      #             - 'logs:CreateLogStream'
+      #             - 'logs:PutLogEvents'
+      #           Resource:
+      #             - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Application}-${Environment}-cloudformation*'
+      #         - Effect: 'Allow'
+      #           Action:
+      #             - 's3:GetObject'
+      #             - 's3:PutObject'
+      #           Resource:
+      #             - !Sub '${BuildBucket.Arn}/*'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub 'cloudformation-build-role'
+  
+  ContainerBuildProject:
+    Type: 'AWS::CodeBuild::Project'
+    Properties:
+      Name: !Sub '${Application}-${Environment}-container'
+      TimeoutInMinutes: 60
+      Artifacts:
+        Type: 'CODEPIPELINE'
+      BuildBatchConfig:
+        CombineArtifacts: false
+        Restrictions:
+          ComputeTypesAllowed:
+            - 'BUILD_GENERAL1_LARGE'
+          MaximumBuildsAllowed: 2
+        ServiceRole: !Sub '${BatchBuildRole.Arn}'
+        TimeoutInMins: 60
+      Cache:
+        Type: 'NO_CACHE'
+      ServiceRole: !Sub '${BatchBuildRole.Arn}'
+      Source:
+        Type: 'CODEPIPELINE'
+        BuildSpec: 'build/buildspec_batch.yml'
+      Environment:
+        ComputeType: 'BUILD_GENERAL1_SMALL'
+        Image: 'aws/codebuild/amazonlinux2-x86_64-standard:3.0'
+        Type: 'LINUX_CONTAINER'
+        EnvironmentVariables:
+          - Name: 'APPLICATION'
+            Value: !Sub '${Application}'
+          - Name: 'ENVIRONMENT'
+            Value: !Sub '${Environment}'
+          - Name: 'BUILD_BUCKET'
+            Value: !Sub '${BuildBucket}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub 'container-build-project'
+
   BuildPipelineRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -435,6 +513,20 @@ Resources:
                     "AlertEmail": "${AlertEmail}",
                     "AlertPhone": "${AlertPhone}"
                   }
+        - Name: 'ContainerBuild'
+          Actions:
+            - Name: 'ContainerBuildAction'
+              InputArtifacts:
+                - Name: 'SourceArtifact'
+              ActionTypeId:
+                Category: 'Build'
+                Owner: 'AWS'
+                Provider: 'CodeBuild'
+                Version: '1'
+              Configuration:
+                BatchEnabled: true
+                ProjectName: !Sub '${ContainerBuildProject}'
+                PrimarySource: 'SourceArtifact'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'

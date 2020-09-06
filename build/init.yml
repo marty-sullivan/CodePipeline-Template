@@ -105,7 +105,7 @@ Resources:
     Type: 'AWS::CodeBuild::Project'
     Properties:
       Name: !Sub '${Application}-${Environment}-cloudformation'
-      TimeoutInMinutes: 5
+      TimeoutInMinutes: 15
       Artifacts:
         Type: 'CODEPIPELINE'
       Cache:
@@ -131,7 +131,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub 'build-project'
+          Value: !Sub 'cloudformation-build-project'
 
   CloudFormationDeployRole:
     Type: 'AWS::IAM::Role'
