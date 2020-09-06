@@ -35,6 +35,10 @@ do
     .
   
   docker push "$CONTAINER_REPO:$CONTAINER_NAME-$(uname -m)"
+  
+  docker manifest create "$CONTAINER_REPO:$CONTAINER_NAME" "$CONTAINER_REPO:$CONTAINER_NAME-x86_64" "$CONTAINER_REPO:$CONTAINER_NAME-aarch64"
+  docker manifest push "$CONTAINER_REPO:$CONTAINER_NAME"
+  
   cd $ORIG_DIR
 
 done
