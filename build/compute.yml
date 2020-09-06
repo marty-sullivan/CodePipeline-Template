@@ -19,7 +19,7 @@ Parameters:
     Description: 'The IAM Role used by CloudFormation to deploy this stack'
     Type: 'String'
 
-# Outputs:
+Outputs:
 
 #   # ECS Environment
   
@@ -32,8 +32,8 @@ Parameters:
 #   EcsLogGroup: 
 #     Value: !Sub '${EcsLogGroup}'
 
-#   EcsRepository:
-#     Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}'
+  EcsRepository:
+    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}'
 
 #   # Batch Environment
   
