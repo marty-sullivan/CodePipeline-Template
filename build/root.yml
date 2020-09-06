@@ -394,6 +394,8 @@ Resources:
             Value: !Sub '${Environment}'
           - Name: 'BUILD_BUCKET'
             Value: !Sub '${BuildBucket}'
+          - Name: 'DOCKER_CLI_EXPERIMENTAL'
+            Value: 'enabled'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
