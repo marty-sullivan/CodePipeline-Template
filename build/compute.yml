@@ -21,16 +21,16 @@ Parameters:
 
 Outputs:
 
-#   # ECS Environment
+  # ECS Environment
   
-#   EcsCluster:
-#     Value: !Sub '${EcsCluster}'
+  EcsCluster:
+    Value: !Sub '${EcsCluster}'
 
-#   EcsTaskExecutionRole:
-#     Value: !Sub '${EcsTaskExecutionRole.Arn}'
+  EcsTaskExecutionRole:
+    Value: !Sub '${EcsTaskExecutionRole.Arn}'
 
-#   EcsLogGroup: 
-#     Value: !Sub '${EcsLogGroup}'
+  EcsLogGroup: 
+    Value: !Sub '${EcsLogGroup}'
 
   EcsRepository:
     Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}'
@@ -110,6 +110,7 @@ Resources:
     DependsOn:
       - 'DeployPolicy'
     Properties:
+      ClusterName: !Sub '${Application}-${Environment}'
       ClusterSettings: 
         - Name: 'containerInsights'
           Value: 'disabled'
@@ -119,7 +120,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-ecs-cluster'
+          Value: !Sub 'ecs-cluster'
 
   EcsTaskExecutionRole:
     Type: 'AWS::IAM::Role'
@@ -161,7 +162,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-ecs-task-execution-role'
+          Value: !Sub 'ecs-task-execution-role'
 
   EcsLogGroup:
     Type: 'AWS::Logs::LogGroup'
@@ -174,6 +175,7 @@ Resources:
   EcsRepository:
     Type: 'AWS::ECR::Repository'
     Properties:
+      RepositoryName: !Sub '${Application}-${Environment}'
       RepositoryPolicyText:
         Version: '2012-10-17'
         Statement:
@@ -223,7 +225,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-ecs-respository'
+          Value: !Sub 'ecs-respository'
 
   # Batch Roles
 
@@ -324,7 +326,7 @@ Resources:
   #       Tags: 
   #         Application: !Sub '${Application}'
   #         Environment: !Sub '${Environment}'
-  #         Resource: !Sub '${Application}-${Environment}-batch-compute'
+  #         Resource: !Sub 'batch-compute'
   #         Name: !Sub '${Application}-${Environment}-batch-compute'
 
   # BatchJobQueue:
@@ -349,7 +351,7 @@ Resources:
   #       - Key: 'Environment'
   #         Value: !Sub '${Environment}'
   #       - Key: 'Resource'
-  #         Value: !Sub '${Application}-${Environment}-filesystem'
+  #         Value: !Sub 'filesystem'
   #       - Key: 'Name'
   #         Value: !Sub '${Application}-${Environment}'
 
@@ -417,7 +419,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-vpc'
+          Value: !Sub 'vpc'
         - Key: 'Name'
           Value: !Sub '${Application}-${Environment}'
   
@@ -432,7 +434,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-igw'
+          Value: !Sub 'igw'
         - Key: 'Name'
           Value: !Sub '${Application}-${Environment}'
   
@@ -452,7 +454,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-rtb'
+          Value: !Sub 'rtb'
         - Key: 'Name'
           Value: !Sub '${Application}-${Environment}'
   
@@ -479,7 +481,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-a'
+          Value: !Sub 'subnet-a'
         - Key: 'Name'
           Value: !Sub '${Application}-${Environment}-a'
   
@@ -505,7 +507,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-subnet-b'
+          Value: !Sub 'subnet-b'
         - Key: 'Name'
           Value: !Sub '${Application}-${Environment}-b'
   
@@ -531,7 +533,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-subnet-c'
+          Value: !Sub 'subnet-c'
         - Key: 'Name'
           Value: !Sub '${Application}-${Environment}-c'
   
@@ -557,7 +559,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-subnet-d'
+          Value: !Sub 'subnet-d'
         - Key: 'Name'
           Value: !Sub '${Application}-${Environment}-d'
   
@@ -583,7 +585,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-subnet-e'
+          Value: !Sub 'subnet-e'
         - Key: 'Name'
           Value: !Sub '${Application}-${Environment}-e'
   
@@ -609,7 +611,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-subnet-f'
+          Value: !Sub 'subnet-f'
         - Key: 'Name'
           Value: !Sub '${Application}-${Environment}-f'
   
