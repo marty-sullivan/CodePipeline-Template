@@ -20,6 +20,10 @@ artifacts:
   files:
     - 'build/packaged.yml'
   secondary-artifacts:
+    CloudFormationArtifact:
+      name: 'CloudFormationArtifact'
+      files:
+        - 'build/packaged.yml'
     WebArtifact:
       name: 'WebArtifact'
       files:

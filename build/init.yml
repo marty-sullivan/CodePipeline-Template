@@ -197,6 +197,12 @@ Resources:
                   - 's3:PutObject'
                 Resource:
                   - !Sub '${BuildBucket.Arn}/*'
+              - Effect: 'Allow'
+                Action:
+                  - 'apigateway:*'
+                # TODO: Reduce Permissions
+                Resource:
+                  - '*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
