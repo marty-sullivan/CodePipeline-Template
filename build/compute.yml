@@ -20,6 +20,13 @@ Parameters:
     Description: 'The IAM Role used by CloudFormation to deploy this stack'
     Type: 'String'
 
+  EcsRepository:
+    Description: 'The ECS Container Repository for the application'
+    Type: 'String'
+  
+  EcsTaskExecutionRole:
+    Description: 'The ARN for the ECS Task Execution Role'
+
 Outputs:
 
   # ECS Environment
@@ -27,9 +34,6 @@ Outputs:
   EcsCluster:
     Value: !Sub '${EcsCluster}'
 
-  EcsRepository:
-    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}'
-  
   ExampleService:
     Value: !Sub '${ExampleService}'
 
@@ -79,7 +83,7 @@ Resources:
       Cpu: 256
       Memory: 512
       NetworkMode: 'awsvpc'
-      ExecutionRoleArn: !Sub '${EcsTaskExecutionRole.Arn}'
+      ExecutionRoleArn: !Sub '${EcsTaskExecutionRole}'
       TaskRoleArn: !Sub '${ExampleTaskRole.Arn}'
       RequiresCompatibilities:
         - 'FARGATE'
@@ -124,6 +128,10 @@ Resources:
 
   ExampleService:
     Type: 'AWS::ECS::Service'
+    DependsOn:
+      - 'MountTargetA'
+      - 'MountTargetB'
+      - 'MountTargetC'
     Properties:
       Cluster: !Sub '${EcsCluster}'
       LaunchType: 'FARGATE'
@@ -169,48 +177,6 @@ Resources:
         - Key: 'Resource'
           Value: !Sub 'ecs-cluster'
 
-  EcsTaskExecutionRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Action: 'sts:AssumeRole'
-            Principal:
-              Service: !Sub 'ecs-tasks.${AWS::URLSuffix}'
-      Policies:
-        - PolicyName: 'ecs-task-execution'
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: 'Allow'
-                Action:
-                  - 'ecr:GetAuthorizationToken'
-                  - 'ecr:BatchCheckLayerAvailability'
-                  - 'ecr:GetDownloadUrlForLayer'
-                  - 'ecr:BatchGetImage'
-                Resource:
-                  - '*'
-              - Effect: 'Allow'
-                Action: 
-                  - 'ssm:GetParameters'
-                Resource:
-                  - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${Application}/${Environment}/*'
-              - Effect: 'Allow'
-                Action:
-                  - 'logs:CreateLogStream'
-                  - 'logs:PutLogEvents'
-                Resource:
-                  - !Sub '${EcsLogGroup.Arn}'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub 'ecs-task-execution-role'
-
   EcsLogGroup:
     Type: 'AWS::Logs::LogGroup'
     DependsOn:
@@ -218,60 +184,6 @@ Resources:
     Properties:
       LogGroupName: !Sub '/${Application}/${Environment}/ecs'
       RetentionInDays: 14
-
-  EcsRepository:
-    Type: 'AWS::ECR::Repository'
-    Properties:
-      RepositoryName: !Sub '${Application}-${Environment}'
-      RepositoryPolicyText:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Principal:
-              AWS: 
-                - !Sub '${EcsTaskExecutionRole.Arn}'
-            Action:
-              - 'ecr:GetDownloadUrlForLayer'
-              - 'ecr:BatchGetImage'
-              - 'ecr:BatchCheckLayerAvailability'
-          - Effect: 'Allow'
-            Principal:
-              AWS: !Sub '${BuildRole}'
-            Action:
-              - 'ecr:BatchGetImage'
-              - 'ecr:BatchCheckLayerAvailability'
-              - 'ecr:CompleteLayerUpload'
-              - 'ecr:DescribeImages'
-              - 'ecr:GetDownloadUrlForLayer'
-              - 'ecr:InitiateLayerUpload'
-              - 'ecr:PutImage'
-              - 'ecr:UploadLayerPart'
-      LifecyclePolicy:
-        LifecyclePolicyText: |-
-          {
-            "rules": [
-              {
-                "action": {
-                  "type": "expire"
-                },
-                "selection": {
-                  "countType": "sinceImagePushed",
-                  "countUnit": "days",
-                  "countNumber": 1,
-                  "tagStatus": "untagged"
-                },
-                "description": "Expire Untagged Images",
-                "rulePriority": 1
-              }
-            ]
-          }
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub 'ecs-respository'
 
   # EFS
   
