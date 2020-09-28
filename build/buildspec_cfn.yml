@@ -27,5 +27,5 @@ artifacts:
     WebArtifact:
       name: 'WebArtifact'
       files:
-        - 'build/web.zip'
+        - 'web/**/*'
       discard-paths: 'yes'
