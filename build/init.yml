@@ -39,7 +39,7 @@ Outputs:
     
 Resources:
 
-  # ECS Repository
+  # ECS Environment
   
   EcsTaskExecutionRole:
     Type: 'AWS::IAM::Role'
@@ -85,8 +85,6 @@ Resources:
 
   EcsLogGroup:
     Type: 'AWS::Logs::LogGroup'
-    DependsOn:
-      - 'DeployPolicy'
     Properties:
       LogGroupName: !Sub '/${Application}/${Environment}/ecs'
       RetentionInDays: 14
