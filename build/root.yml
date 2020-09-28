@@ -513,6 +513,11 @@ Resources:
             Statement:
               - Effect: 'Allow'
                 Action:
+                  - 'cloudformation:DescribeStacks'
+                Resource:
+                  - !Sub '${AWS::StackId}'
+              - Effect: 'Allow'
+                Action:
                   - 'logs:CreateLogStream'
                   - 'logs:PutLogEvents'
                 Resource:
@@ -761,6 +766,7 @@ Resources:
                   - 's3:PutObject'
                 Resource:
                   - !Sub '${BuildBucket.Arn}/*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${WebStack.Outputs.WebBucket}/*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
