@@ -130,6 +130,8 @@ Resources:
       PlatformVersion: '1.4.0'
       PropagateTags: 'SERVICE'
       TaskDefinition: !Sub '${ExampleFargateDefinition}'
+      SchedulingStrategy: 'REPLICA'
+      DesiredCount: 1
       # LoadBalancers:
       NetworkConfiguration:
         AwsVpcConfiguration:
