@@ -26,6 +26,11 @@ Parameters:
   
   EcsTaskExecutionRole:
     Description: 'The ARN for the ECS Task Execution Role'
+    Type: 'String'
+    
+  EcsLogGroup:
+    Description: 'The ECS CloudWatch Log Group'
+    Type: 'String'
 
 Outputs:
 
@@ -91,7 +96,7 @@ Resources:
         - Name: 'example'
           Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}:example'
           Essential: true
-          Command: ['python3', '-m', '80']
+          Command: ['python3', '-m', 'http.server', '80']
           LogConfiguration:
             LogDriver: 'awslogs'
             Options:
@@ -176,14 +181,6 @@ Resources:
           Value: !Sub '${Environment}'
         - Key: 'Resource'
           Value: !Sub 'ecs-cluster'
-
-  EcsLogGroup:
-    Type: 'AWS::Logs::LogGroup'
-    DependsOn:
-      - 'DeployPolicy'
-    Properties:
-      LogGroupName: !Sub '/${Application}/${Environment}/ecs'
-      RetentionInDays: 14
 
   # EFS
   

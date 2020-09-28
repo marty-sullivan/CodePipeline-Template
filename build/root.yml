@@ -83,6 +83,14 @@ Resources:
         - Key: 'Resource'
           Value: !Sub 'ecs-task-execution-role'
 
+  EcsLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    DependsOn:
+      - 'DeployPolicy'
+    Properties:
+      LogGroupName: !Sub '/${Application}/${Environment}/ecs'
+      RetentionInDays: 14
+
   EcsRepository:
     Type: 'AWS::ECR::Repository'
     Properties:
@@ -150,6 +158,7 @@ Resources:
         CloudFormationDeployRole: !Sub '${CloudFormationDeployRole}'
         EcsRepository: !Sub '${EcsRepository}'
         EcsTaskExecutionRole: !Sub '${EcsTaskExecutionRole.Arn}'
+        EcsLogGroup: !Sub '${EcsLogGroup}'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
