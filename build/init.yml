@@ -299,6 +299,16 @@ Resources:
                   - 'logs:DescribeLogGroups'
                 Resource:
                   - '*'
+              # TODO: Reduce Permissions here
+              - Effect: 'Allow'
+                Action:
+                  - 'ec2:*'
+                  - 'ecs:*'
+                  - 'ecr:*'
+                  - 'elasticfilesystem:*'
+                  - 'iam:RemoveRoleFromInstanceProfile'
+                Resource:
+                  - '*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
