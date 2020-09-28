@@ -28,3 +28,4 @@ artifacts:
       name: 'WebArtifact'
       files:
         - 'build/web.zip'
+      discard-paths: 'yes'
