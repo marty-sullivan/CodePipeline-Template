@@ -866,7 +866,7 @@ Resources:
           Actions:
             - Name: 'StaticWebContentDeployAction'
               InputArtifacts: 
-                - 'WebArtifact'
+                - Name: 'WebArtifact'
               ActionTypeId: 
                 Category: 'Deploy'
                 Owner: 'AWS'
