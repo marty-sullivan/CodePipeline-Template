@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
 Description: 'Standard VPC Template'
 
 Parameters:
@@ -26,62 +27,11 @@ Outputs:
   EcsCluster:
     Value: !Sub '${EcsCluster}'
 
-  EcsTaskExecutionRole:
-    Value: !Sub '${EcsTaskExecutionRole.Arn}'
-
-  EcsLogGroup: 
-    Value: !Sub '${EcsLogGroup}'
-
   EcsRepository:
     Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}'
-
-#   # Batch Environment
   
-#   BatchServiceRole:
-#     Value: !Sub '${BatchServiceRole.Arn}'
-  
-#   SpotFleetServiceRole:
-#     Value: !Sub '${SpotFleetServiceRole.Arn}'
-  
-#   BatchInstanceRole:
-#     Value: !Sub '${BatchInstanceRole.Arn}'
-  
-#   BatchInstanceProfile:
-#     Value: !Sub '${BatchInstanceProfile.Arn}'
-  
-#   BatchJobQueue:
-#     Value: !Sub '${BatchJobQueue}'
-  
-#   # EFS
-  
-#   FileSystem:
-#     Value: !Sub '${FileSystem}.efs.${AWS::Region}.${AWS::URLSuffix}'
-
-#   # VPC
-
-#   Vpc:
-#     Value: !Sub '${Vpc}'
-  
-#   DefaultSecurityGroup:
-#     Value: !Sub '${Vpc.DefaultSecurityGroup}'
-  
-#   SubnetA:
-#     Value: !Sub '${SubnetA}'
-
-#   SubnetB:
-#     Value: !Sub '${SubnetB}'
-
-#   SubnetC:
-#     Value: !Sub '${SubnetC}'
-
-#   SubnetD:
-#     Value: !Sub '${SubnetD}'
-
-#   SubnetE:
-#     Value: !Sub '${SubnetE}'
-
-#   SubnetF:
-#     Value: !Sub '${SubnetF}'
+  ExampleService:
+    Value: !Sub '${ExampleService}'
 
 Resources:
 
@@ -103,6 +53,101 @@ Resources:
               Resource:
                 - '*'
 
+  # Container Definitions
+  
+  ExampleTaskRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action: 'sts:AssumeRole'
+            Principal:
+              Service: !Sub 'ecs-tasks.${AWS::URLSuffix}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-example-task-role'
+  
+  ExampleFargateDefinition:
+    Type: 'AWS::ECS::TaskDefinition'
+    Properties:
+      Cpu: 256
+      Memory: 512
+      NetworkMode: 'awsvpc'
+      ExecutionRoleArn: !Sub '${EcsTaskExecutionRole.Arn}'
+      TaskRoleArn: !Sub '${ExampleTaskRole.Arn}'
+      RequiresCompatibilities:
+        - 'FARGATE'
+      ContainerDefinitions:
+        - Name: 'example'
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}:example'
+          Essential: true
+          Command: ['python3', '-m', '80']
+          LogConfiguration:
+            LogDriver: 'awslogs'
+            Options:
+              awslogs-region: !Sub '${AWS::Region}'
+              awslogs-group: !Sub '${EcsLogGroup}'
+              awslogs-stream-prefix: 'example'
+          MountPoints:
+            - SourceVolume: 'efs'
+              ContainerPath: '/efs'
+          Environment:
+            - Name: 'APPLICATION'
+              Value: !Sub '${Application}'
+            - Name: 'ENVIRONMENT'
+              Value: !Sub '${Environment}'
+            - Name: 'AWS_REGION'
+              Value: !Sub '${AWS::Region}'
+            - Name: 'AWS_DEFAULT_REGION'
+              Value: !Sub '${AWS::Region}'
+      Volumes:
+        - Name: 'efs'
+          EFSVolumeConfiguration:
+            FilesystemId: !Sub '${FileSystem}'
+            TransitEncryption: 'ENABLED'
+            AuthorizationConfig:
+              AccessPointId: !Sub '${EfsAccessPoint}'
+              IAM: 'DISABLED'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub 'example-fargate-definition'
+
+  ExampleService:
+    Type: 'AWS::ECS::Service'
+    Properties:
+      Cluster: !Sub '${EcsCluster}'
+      LaunchType: 'FARGATE'
+      PlatformVersion: '1.4.0'
+      PropagateTags: 'SERVICE'
+      TaskDefinition: !Sub '${ExampleFargateDefinition}'
+      # LoadBalancers:
+      NetworkConfiguration:
+        AwsVpcConfiguration:
+          AssignPublicIp: 'ENABLED'
+          SecurityGroups:
+            - !Sub '${Vpc.DefaultSecurityGroup}'
+          Subnets:
+            - !Sub '${SubnetA}'
+            - !Sub '${SubnetB}'
+            - !Sub '${SubnetC}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub 'example-ecs-service'
+
   # ECS Environment
 
   EcsCluster:
@@ -113,7 +158,7 @@ Resources:
       ClusterName: !Sub '${Application}-${Environment}'
       ClusterSettings: 
         - Name: 'containerInsights'
-          Value: 'disabled'
+          Value: 'enabled'
       Tags: 
         - Key: 'Application'
           Value: !Sub '${Application}'
@@ -182,7 +227,6 @@ Resources:
           - Effect: 'Allow'
             Principal:
               AWS: 
-                - !Sub '${BatchInstanceRole.Arn}'
                 - !Sub '${EcsTaskExecutionRole.Arn}'
             Action:
               - 'ecr:GetDownloadUrlForLayer'
@@ -227,181 +271,60 @@ Resources:
         - Key: 'Resource'
           Value: !Sub 'ecs-respository'
 
-  # Batch Roles
-
-  BatchServiceRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Action: 'sts:AssumeRole'
-            Principal:
-              Service: !Sub 'batch.${AWS::URLSuffix}'
-      ManagedPolicyArns:
-        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBatchServiceRole'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-batch-instance-role'
-
-  SpotFleetServiceRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Action: 'sts:AssumeRole'
-            Principal:
-              Service: !Sub 'spotfleet.${AWS::URLSuffix}'
-      ManagedPolicyArns:
-        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-batch-instance-role'
-
-  BatchInstanceRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Action: 'sts:AssumeRole'
-            Principal:
-              Service: !Sub 'ec2.${AWS::URLSuffix}'
-      ManagedPolicyArns:
-        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-batch-instance-role'
-
-  BatchInstanceProfile:
-    Type: 'AWS::IAM::InstanceProfile'
-    DependsOn:
-      - 'DeployPolicy'
-    Properties:
-      Roles:
-        - !Sub '${BatchInstanceRole}'
-
-  # Batch Environment
-  
-  # BatchComputeEnvironment:
-  #   Type: 'AWS::Batch::ComputeEnvironment'
-  #   Properties:
-  #     State: 'ENABLED'
-  #     Type: 'MANAGED'
-  #     ServiceRole: !Sub '${BatchServiceRole.Arn}'
-  #     ComputeResources:
-  #       Type: 'SPOT'
-  #       DesiredvCpus: 0
-  #       MaxvCpus: 10
-  #       MinvCpus: 0
-  #       InstanceRole: !Sub '${BatchInstanceProfile.Arn}'
-  #       SpotIamFleetRole: !Sub '${SpotFleetServiceRole.Arn}'
-  #       InstanceTypes:
-  #         - 'm3.medium'
-  #       SecurityGroupIds:
-  #         - !Sub '${Vpc.DefaultSecurityGroup}'
-  #       Subnets:
-  #         - !Sub '${SubnetA}'
-  #         - !Sub '${SubnetB}'
-  #         - !Sub '${SubnetC}'
-  #         - !Sub '${SubnetD}'
-  #         - !Sub '${SubnetE}'
-  #         - !Sub '${SubnetF}'
-  #       Tags: 
-  #         Application: !Sub '${Application}'
-  #         Environment: !Sub '${Environment}'
-  #         Resource: !Sub 'batch-compute'
-  #         Name: !Sub '${Application}-${Environment}-batch-compute'
-
-  # BatchJobQueue:
-  #   Type: 'AWS::Batch::JobQueue'
-  #   Properties:
-  #     State: 'ENABLED'
-  #     Priority: 100
-  #     ComputeEnvironmentOrder:
-  #       - ComputeEnvironment: !Sub '${BatchComputeEnvironment}'
-  #         Order: 1
-
   # EFS
   
-  # FileSystem:
-  #   Type: 'AWS::EFS::FileSystem'
-  #   Properties:
-  #     PerformanceMode: 'generalPurpose'
-  #     ThroughputMode: 'bursting'
-  #     FileSystemTags:
-  #       - Key: 'Application'
-  #         Value: !Sub '${Application}'
-  #       - Key: 'Environment'
-  #         Value: !Sub '${Environment}'
-  #       - Key: 'Resource'
-  #         Value: !Sub 'filesystem'
-  #       - Key: 'Name'
-  #         Value: !Sub '${Application}-${Environment}'
+  FileSystem:
+    Type: 'AWS::EFS::FileSystem'
+    Properties:
+      PerformanceMode: 'generalPurpose'
+      ThroughputMode: 'bursting'
+      FileSystemTags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub 'filesystem'
+        - Key: 'Name'
+          Value: !Sub '${Application}-${Environment}'
 
-  # MountTargetA:
-  #   Type: 'AWS::EFS::MountTarget'
-  #   Properties:
-  #     FileSystemId: !Sub '${FileSystem}'
-  #     SubnetId: !Sub '${SubnetA}'
-  #     SecurityGroups:
-  #       - !Sub '${Vpc.DefaultSecurityGroup}'
+  EfsAccessPoint:
+    Type: 'AWS::EFS::AccessPoint'
+    Properties:
+      FileSystemId: !Sub '${FileSystem}'
+      AccessPointTags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub 'efs-access-point'
+        - Key: 'Name'
+          Value: !Sub '${Application}-${Environment}'
+
+  MountTargetA:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      FileSystemId: !Sub '${FileSystem}'
+      SubnetId: !Sub '${SubnetA}'
+      SecurityGroups:
+        - !Sub '${Vpc.DefaultSecurityGroup}'
       
-  # MountTargetB:
-  #   Type: 'AWS::EFS::MountTarget'
-  #   Properties:
-  #     FileSystemId: !Sub '${FileSystem}'
-  #     SubnetId: !Sub '${SubnetB}'
-  #     SecurityGroups:
-  #       - !Sub '${Vpc.DefaultSecurityGroup}'
+  MountTargetB:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      FileSystemId: !Sub '${FileSystem}'
+      SubnetId: !Sub '${SubnetB}'
+      SecurityGroups:
+        - !Sub '${Vpc.DefaultSecurityGroup}'
       
-  # MountTargetC:
-  #   Type: 'AWS::EFS::MountTarget'
-  #   Properties:
-  #     FileSystemId: !Sub '${FileSystem}'
-  #     SubnetId: !Sub '${SubnetC}'
-  #     SecurityGroups:
-  #       - !Sub '${Vpc.DefaultSecurityGroup}'
-      
-  # MountTargetD:
-  #   Type: 'AWS::EFS::MountTarget'
-  #   Properties:
-  #     FileSystemId: !Sub '${FileSystem}'
-  #     SubnetId: !Sub '${SubnetD}'
-  #     SecurityGroups:
-  #       - !Sub '${Vpc.DefaultSecurityGroup}'
-      
-  # MountTargetE:
-  #   Type: 'AWS::EFS::MountTarget'
-  #   Properties:
-  #     FileSystemId: !Sub '${FileSystem}'
-  #     SubnetId: !Sub '${SubnetE}'
-  #     SecurityGroups:
-  #       - !Sub '${Vpc.DefaultSecurityGroup}'
-      
-  # MountTargetF:
-  #   Type: 'AWS::EFS::MountTarget'
-  #   Properties:
-  #     FileSystemId: !Sub '${FileSystem}'
-  #     SubnetId: !Sub '${SubnetF}'
-  #     SecurityGroups:
-  #       - !Sub '${Vpc.DefaultSecurityGroup}'
+  MountTargetC:
+    Type: 'AWS::EFS::MountTarget'
+    Properties:
+      FileSystemId: !Sub '${FileSystem}'
+      SubnetId: !Sub '${SubnetC}'
+      SecurityGroups:
+        - !Sub '${Vpc.DefaultSecurityGroup}'
       
   # VPC
 
@@ -542,82 +465,4 @@ Resources:
     Properties:
       RouteTableId: !Sub '${RouteTable}'
       SubnetId: !Sub '${SubnetC}'
-  
-  SubnetD:
-    Type: 'AWS::EC2::Subnet'
-    Properties: 
-      AvailabilityZone: 
-        Fn::Select:
-          - 3
-          - Fn::GetAZs: ''
-      CidrBlock: '10.0.96.0/19'
-      MapPublicIpOnLaunch: true
-      VpcId: !Sub '${Vpc}'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub 'subnet-d'
-        - Key: 'Name'
-          Value: !Sub '${Application}-${Environment}-d'
-  
-  SubnetRouteD:
-    Type: 'AWS::EC2::SubnetRouteTableAssociation'
-    Properties:
-      RouteTableId: !Sub '${RouteTable}'
-      SubnetId: !Sub '${SubnetD}'
-  
-  SubnetE:
-    Type: 'AWS::EC2::Subnet'
-    Properties: 
-      AvailabilityZone: 
-        Fn::Select:
-          - 4
-          - Fn::GetAZs: ''
-      CidrBlock: '10.0.128.0/19'
-      MapPublicIpOnLaunch: true
-      VpcId: !Sub '${Vpc}'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub 'subnet-e'
-        - Key: 'Name'
-          Value: !Sub '${Application}-${Environment}-e'
-  
-  SubnetRouteE:
-    Type: 'AWS::EC2::SubnetRouteTableAssociation'
-    Properties:
-      RouteTableId: !Sub '${RouteTable}'
-      SubnetId: !Sub '${SubnetE}'
-  
-  SubnetF:
-    Type: 'AWS::EC2::Subnet'
-    Properties: 
-      AvailabilityZone: 
-        Fn::Select:
-          - 5
-          - Fn::GetAZs: ''
-      CidrBlock: '10.0.160.0/19'
-      MapPublicIpOnLaunch: true
-      VpcId: !Sub '${Vpc}'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub 'subnet-f'
-        - Key: 'Name'
-          Value: !Sub '${Application}-${Environment}-f'
-  
-  SubnetRouteF:
-    Type: 'AWS::EC2::SubnetRouteTableAssociation'
-    Properties:
-      RouteTableId: !Sub '${RouteTable}'
-      SubnetId: !Sub '${SubnetF}'
   
