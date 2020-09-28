@@ -20,7 +20,4 @@ WEB_BUCKET=$(aws cloudformation describe-stacks \
   --query 'Stacks[0].Outputs[?OutputKey==`WebBucket`].OutputValue' \
   --output text)
 
-aws s3 sync \
-  --delete \
-  --acl public-read \
-  $CODEBUILD_SRC_DIR/web/ s3://$WEB_BUCKET/
+zip $CODEBUILD_SRC_DIR/build/web.zip -r $CODEBUILD_SRC_DIR/web/*

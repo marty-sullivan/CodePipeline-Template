@@ -801,6 +801,7 @@ Resources:
                 - Name: 'SourceArtifact'
               OutputArtifacts:
                 - Name: 'CloudFormationArtifact'
+                - Name: 'WebArtifact'
               ActionTypeId:
                 Category: 'Build'
                 Owner: 'AWS'
@@ -849,6 +850,21 @@ Resources:
                     "AlertEmail": "${AlertEmail}",
                     "AlertPhone": "${AlertPhone}"
                   }
+        - Name: 'StaticWebContentDeploy'
+          Actions:
+            - Name: 'StaticWebContentDeployAction'
+              InputArtifacts: 
+                - 'WebArtifact'
+              ActionTypeId: 
+                Category: 'Deploy'
+                Owner: 'AWS'
+                Provider: 'S3'
+                Version: '1'
+              Configuration:
+                BucketName: !Sub '${WebStack.Outputs.WebBucket}'
+                Extract: 'true'
+                CannedACL: 'public-read'
+                CacheControl: 'no-cache, no-store, must-revalidate'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'

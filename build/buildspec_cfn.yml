@@ -19,3 +19,8 @@ artifacts:
   name: 'CloudFormationArtifact'
   files:
     - 'build/packaged.yml'
+  secondary-artifacts:
+    WebArtifact:
+      name: 'WebArtifact'
+      files:
+        - 'build/web.zip'
