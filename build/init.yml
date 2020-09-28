@@ -106,7 +106,7 @@ Resources:
               - 'ecr:BatchCheckLayerAvailability'
           - Effect: 'Allow'
             Principal:
-              AWS: !Sub '${BuildRole}'
+              AWS: !Sub '${BatchBuildRole.Arn}'
             Action:
               - 'ecr:BatchGetImage'
               - 'ecr:BatchCheckLayerAvailability'
