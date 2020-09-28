@@ -27,6 +27,9 @@ Parameters:
 
 Outputs:
 
+  ApiId:
+    Value: !Sub '${Api}'
+
   WebBucket:
     Value: !Sub '${WebBucket}'
 
