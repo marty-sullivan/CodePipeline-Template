@@ -25,13 +25,13 @@ Parameters:
     Description: 'The IAM Role used by CloudFormation to deploy this stack'
     Type: 'String'
 
-# Outputs:
+Outputs:
 
-#   WebBucket:
-#     Value: !Sub '${WebBucket}'
+  ApiId:
+    Value: !Sub '${Api}'
 
-#   WebLogsBucket:
-#     Value: !Sub '${LogsBucket}'
+  WebBucket:
+    Value: !Sub '${WebBucket}'
 
 Globals:
   

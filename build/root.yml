@@ -43,6 +43,8 @@ Resources:
   
   ExampleTaskRole:
     Type: 'AWS::IAM::Role'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -61,6 +63,8 @@ Resources:
   
   ExampleFargateDefinition:
     Type: 'AWS::ECS::TaskDefinition'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       Cpu: 256
       Memory: 512
@@ -111,6 +115,7 @@ Resources:
   ExampleService:
     Type: 'AWS::ECS::Service'
     DependsOn:
+      - 'CloudFormationDeployRole'
       - 'MountTargetA'
       - 'MountTargetB'
       - 'MountTargetC'
@@ -144,6 +149,8 @@ Resources:
 
   EcsCluster:
     Type: 'AWS::ECS::Cluster'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       ClusterName: !Sub '${Application}-${Environment}'
       ClusterSettings: 
@@ -159,6 +166,8 @@ Resources:
 
   EcsTaskExecutionRole:
     Type: 'AWS::IAM::Role'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -201,12 +210,16 @@ Resources:
 
   EcsLogGroup:
     Type: 'AWS::Logs::LogGroup'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       LogGroupName: !Sub '/${Application}/${Environment}/ecs'
       RetentionInDays: 14
 
   EcsRepository:
     Type: 'AWS::ECR::Repository'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       RepositoryName: !Sub '${Application}-${Environment}'
       RepositoryPolicyText:
@@ -263,6 +276,8 @@ Resources:
   
   # WebStack:
   #   Type: 'AWS::CloudFormation::Stack'
+  #   DependsOn:
+  #     - 'CloudFormationDeployRole'
   #   Properties:
   #     TemplateURL: './web.yml'
   #     Parameters:
@@ -282,6 +297,8 @@ Resources:
   
   FileSystem:
     Type: 'AWS::EFS::FileSystem'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       PerformanceMode: 'generalPurpose'
       ThroughputMode: 'bursting'
@@ -297,6 +314,8 @@ Resources:
 
   EfsAccessPoint:
     Type: 'AWS::EFS::AccessPoint'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       FileSystemId: !Sub '${FileSystem}'
       AccessPointTags:
@@ -311,6 +330,8 @@ Resources:
 
   MountTargetA:
     Type: 'AWS::EFS::MountTarget'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       FileSystemId: !Sub '${FileSystem}'
       SubnetId: !Sub '${SubnetA}'
@@ -319,6 +340,8 @@ Resources:
       
   MountTargetB:
     Type: 'AWS::EFS::MountTarget'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       FileSystemId: !Sub '${FileSystem}'
       SubnetId: !Sub '${SubnetB}'
@@ -327,6 +350,8 @@ Resources:
       
   MountTargetC:
     Type: 'AWS::EFS::MountTarget'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       FileSystemId: !Sub '${FileSystem}'
       SubnetId: !Sub '${SubnetC}'
@@ -337,6 +362,8 @@ Resources:
 
   Vpc:
     Type: 'AWS::EC2::VPC'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       CidrBlock: '10.0.0.0/16'
       EnableDnsHostnames: true
@@ -353,6 +380,8 @@ Resources:
   
   InternetGateway:
     Type: 'AWS::EC2::InternetGateway'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       Tags:
         - Key: 'Application'
@@ -366,12 +395,16 @@ Resources:
   
   InternetGatewayAttachment:
     Type: 'AWS::EC2::VPCGatewayAttachment'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       InternetGatewayId: !Sub '${InternetGateway}'
       VpcId: !Sub '${Vpc}'
 
   RouteTable:
     Type: 'AWS::EC2::RouteTable'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       VpcId: !Sub '${Vpc}'
       Tags:
@@ -386,13 +419,28 @@ Resources:
   
   InternetRoute:
     Type: 'AWS::EC2::Route'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       DestinationCidrBlock: '0.0.0.0/0'
       GatewayId: !Sub '${InternetGateway}'
       RouteTableId: !Sub '${RouteTable}'
   
+  HttpIngress:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    DependsOn:
+      - 'CloudFormationDeployRole'
+    Properties:
+      GroupId: !Sub '${Vpc.DefaultSecurityGroup}'
+      IpProtocol: 'tcp'
+      CidrIp: '0.0.0.0/0'
+      FromPort: 80
+      ToPort: 80
+  
   SubnetA:
     Type: 'AWS::EC2::Subnet'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties: 
       AvailabilityZone: 
         Fn::Select:
@@ -413,12 +461,16 @@ Resources:
   
   SubnetRouteA:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       RouteTableId: !Sub '${RouteTable}'
       SubnetId: !Sub '${SubnetA}'
   
   SubnetB:
     Type: 'AWS::EC2::Subnet'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties: 
       AvailabilityZone: 
         Fn::Select:
@@ -439,12 +491,16 @@ Resources:
   
   SubnetRouteB:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       RouteTableId: !Sub '${RouteTable}'
       SubnetId: !Sub '${SubnetB}'
   
   SubnetC:
     Type: 'AWS::EC2::Subnet'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties: 
       AvailabilityZone: 
         Fn::Select:
@@ -465,6 +521,8 @@ Resources:
   
   SubnetRouteC:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       RouteTableId: !Sub '${RouteTable}'
       SubnetId: !Sub '${SubnetC}'
@@ -473,7 +531,10 @@ Resources:
   
   BuildBucket:
     Type: 'AWS::S3::Bucket'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
+      BucketName: !Sub '${Application}-${Environment}-build-${AWS::AccountId}-${AWS::Region}'
       # LifecycleConfiguration:
       #   Rules:
       #     - Id: 'daily-cleanup'
@@ -497,6 +558,8 @@ Resources:
 
   CloudFormationBuildRole:
     Type: 'AWS::IAM::Role'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -513,6 +576,11 @@ Resources:
             Statement:
               - Effect: 'Allow'
                 Action:
+                  - 'cloudformation:DescribeStacks'
+                Resource:
+                  - !Sub '${AWS::StackId}'
+              - Effect: 'Allow'
+                Action:
                   - 'logs:CreateLogStream'
                   - 'logs:PutLogEvents'
                 Resource:
@@ -523,6 +591,12 @@ Resources:
                   - 's3:PutObject'
                 Resource:
                   - !Sub '${BuildBucket.Arn}/*'
+              - Effect: 'Allow'
+                Action:
+                  - 'apigateway:*'
+                # TODO: Reduce Permissions
+                Resource:
+                  - '*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
@@ -533,11 +607,15 @@ Resources:
   
   CloudFormationBuildLogs:
     Type: 'AWS::Logs::LogGroup'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       LogGroupName: !Sub '/aws/codebuild/${CloudFormationBuildProject}'
       
   CloudFormationBuildProject:
     Type: 'AWS::CodeBuild::Project'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       Name: !Sub '${Application}-${Environment}-cloudformation'
       TimeoutInMinutes: 15
@@ -613,7 +691,7 @@ Resources:
                 Action:
                   - 's3:GetObject'
                 Resource:
-                  - !Sub '${BuildBucket.Arn}/*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}-build-${AWS::AccountId}-${AWS::Region}'
               - Effect: 'Allow'
                 Action:
                   - 'ssm:GetParameter*'
@@ -645,6 +723,8 @@ Resources:
   
   BatchBuildRole:
     Type: 'AWS::IAM::Role'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -683,6 +763,8 @@ Resources:
   
   ContainerBuildProject:
     Type: 'AWS::CodeBuild::Project'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       Name: !Sub '${Application}-${Environment}-container'
       TimeoutInMinutes: 60
@@ -725,6 +807,8 @@ Resources:
 
   BuildPipelineRole:
     Type: 'AWS::IAM::Role'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -758,9 +842,10 @@ Resources:
               - Effect: 'Allow'
                 Action:
                   - 's3:GetObject'
-                  - 's3:PutObject'
+                  - 's3:PutObject*'
                 Resource:
                   - !Sub '${BuildBucket.Arn}/*'
+                  # - !Sub 'arn:${AWS::Partition}:s3:::${WebStack.Outputs.WebBucket}/*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
@@ -771,6 +856,8 @@ Resources:
   
   BuildPipeline:
     Type: 'AWS::CodePipeline::Pipeline'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       ArtifactStore:
         Location: !Sub '${BuildBucket}'
@@ -801,6 +888,7 @@ Resources:
                 - Name: 'SourceArtifact'
               OutputArtifacts:
                 - Name: 'CloudFormationArtifact'
+                - Name: 'WebArtifact'
               ActionTypeId:
                 Category: 'Build'
                 Owner: 'AWS'
@@ -849,6 +937,21 @@ Resources:
                     "AlertEmail": "${AlertEmail}",
                     "AlertPhone": "${AlertPhone}"
                   }
+        # - Name: 'StaticWebContentDeploy'
+        #   Actions:
+        #     - Name: 'StaticWebContentDeployAction'
+        #       InputArtifacts: 
+        #         - Name: 'WebArtifact'
+        #       ActionTypeId: 
+        #         Category: 'Deploy'
+        #         Owner: 'AWS'
+        #         Provider: 'S3'
+        #         Version: '1'
+        #       Configuration:
+        #         BucketName: !Sub '${WebStack.Outputs.WebBucket}'
+        #         Extract: 'true'
+        #         CannedACL: 'public-read'
+        #         CacheControl: 'no-cache, no-store, must-revalidate'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
@@ -859,6 +962,8 @@ Resources:
   
   BuildPipelineWebhook:
     Type: 'AWS::CodePipeline::Webhook'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       Authentication: 'GITHUB_HMAC'
       AuthenticationConfiguration:
