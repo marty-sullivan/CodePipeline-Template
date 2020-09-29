@@ -2,7 +2,7 @@
 
 This repo is a template for containerized applications deployed with CodePipeline -> CodeBuild -> CloudFormation -> ECS
 
-### GitHub Authentication Setup
+### GitHub Authentication Setup (Currently Manual)
 
 1. Create a Personal Access Token in GitHub for CodePipeline: https://docs.aws.amazon.com/codepipeline/latest/userguide/GitHub-create-personal-token-CLI.html
 2. Place the Personal Access Token in an SSM Parameter in the desired AWS Account / Region named `/CodePipeline/GitHub`
@@ -16,6 +16,13 @@ This repo is a template for containerized applications deployed with CodePipelin
 5. Watch CloudFormation console for progress deploying initializer template (`build/init.yml`)
 6. Watch CodePipeline console for progress of first pipeline run & monitor CodeBuild + CloudFormation progress
 7. Commit + Push changes to branch in order to trigger a new build
+
+### Application Destruction (Currently Manual)
+
+1. Delete any objects from S3 Buckets (Build + Web + Web Logs)
+2. Delete any ECR Container Images
+3. Delete any Manual Route53 Records (e.g. ACM cert verification CNAMEs)
+4. Delete the CloudFormation Stack for the deployment
 
 ### Notes
 
