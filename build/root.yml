@@ -391,6 +391,15 @@ Resources:
       GatewayId: !Sub '${InternetGateway}'
       RouteTableId: !Sub '${RouteTable}'
   
+  HttpIngress:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Sub '${Vpc.DefaultSecurityGroup}'
+      IpProtocol: 'tcp'
+      CidrIp: '0.0.0.0/0'
+      FromPort: 80
+      ToPort: 80
+  
   SubnetA:
     Type: 'AWS::EC2::Subnet'
     Properties: 
