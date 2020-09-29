@@ -156,7 +156,7 @@ Resources:
     DependsOn:
       - 'CloudFormationDeployRole'
     Properties:
-      BucketName: !Sub '${Application}-${Environment}-build-${AWS::StackId}'
+      BucketName: !Sub '${Application}-${Environment}-build-${AWS::AccountId}-${AWS::Region}'
       # LifecycleConfiguration:
       #   Rules:
       #     - Id: 'daily-cleanup'
@@ -308,7 +308,7 @@ Resources:
                 Action:
                   - 's3:GetObject'
                 Resource:
-                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}-build-${AWS::StackId}'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}-build-${AWS::AccountId}-${AWS::Region}'
               - Effect: 'Allow'
                 Action:
                   - 'ssm:GetParameter*'
