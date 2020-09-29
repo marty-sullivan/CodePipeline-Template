@@ -1,6 +1,6 @@
 export APPLICATION="pipelinetemplate"
-export DOMAIN_NAME="pipelinetemplate.cucloud.net"
-export GITHUB_OWNER="CU-CommunityApps"
+export DOMAIN_NAME="pipelinetemplate.martysullivan.com"
+export GITHUB_OWNER="marty-sullivan"
 export GITHUB_REPO="CodePipeline-Template"
 export ALERT_EMAIL=""
 export ALERT_PHONE=""
