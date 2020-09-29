@@ -43,6 +43,8 @@ Resources:
   
   EcsTaskExecutionRole:
     Type: 'AWS::IAM::Role'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -85,12 +87,16 @@ Resources:
 
   EcsLogGroup:
     Type: 'AWS::Logs::LogGroup'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       LogGroupName: !Sub '/${Application}/${Environment}/ecs'
       RetentionInDays: 14
 
   EcsRepository:
     Type: 'AWS::ECR::Repository'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       RepositoryName: !Sub '${Application}-${Environment}'
       RepositoryPolicyText:
@@ -147,7 +153,10 @@ Resources:
   
   BuildBucket:
     Type: 'AWS::S3::Bucket'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
+      BucketName: !Sub '${Application}-${Environment}-build-${AWS::StackId}'
       # LifecycleConfiguration:
       #   Rules:
       #     - Id: 'daily-cleanup'
@@ -171,6 +180,8 @@ Resources:
 
   CloudFormationBuildRole:
     Type: 'AWS::IAM::Role'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -213,11 +224,15 @@ Resources:
   
   CloudFormationBuildLogs:
     Type: 'AWS::Logs::LogGroup'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       LogGroupName: !Sub '/aws/codebuild/${CloudFormationBuildProject}'
       
   CloudFormationBuildProject:
     Type: 'AWS::CodeBuild::Project'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       Name: !Sub '${Application}-${Environment}-cloudformation'
       TimeoutInMinutes: 15
@@ -293,7 +308,7 @@ Resources:
                 Action:
                   - 's3:GetObject'
                 Resource:
-                  - !Sub '${BuildBucket.Arn}/*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}-build-${AWS::StackId}'
               - Effect: 'Allow'
                 Action:
                   - 'ssm:GetParameter*'
@@ -325,6 +340,8 @@ Resources:
   
   BatchBuildRole:
     Type: 'AWS::IAM::Role'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -363,6 +380,8 @@ Resources:
   
   ContainerBuildProject:
     Type: 'AWS::CodeBuild::Project'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       Name: !Sub '${Application}-${Environment}-container'
       TimeoutInMinutes: 60
@@ -405,6 +424,8 @@ Resources:
 
   BuildPipelineRole:
     Type: 'AWS::IAM::Role'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -451,6 +472,8 @@ Resources:
   
   BuildPipeline:
     Type: 'AWS::CodePipeline::Pipeline'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       ArtifactStore:
         Location: !Sub '${BuildBucket}'
@@ -539,6 +562,8 @@ Resources:
   
   BuildPipelineWebhook:
     Type: 'AWS::CodePipeline::Webhook'
+    DependsOn:
+      - 'CloudFormationDeployRole'
     Properties:
       Authentication: 'GITHUB_HMAC'
       AuthenticationConfiguration:
