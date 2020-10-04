@@ -691,7 +691,7 @@ Resources:
                 Action:
                   - 's3:GetObject'
                 Resource:
-                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}-build-${AWS::AccountId}-${AWS::Region}'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}-build-${AWS::AccountId}-${AWS::Region}/*'
               - Effect: 'Allow'
                 Action:
                   - 'ssm:GetParameter*'
@@ -845,7 +845,7 @@ Resources:
                   - 's3:PutObject*'
                 Resource:
                   - !Sub '${BuildBucket.Arn}/*'
-                  # - !Sub 'arn:${AWS::Partition}:s3:::${WebStack.Outputs.WebBucket}/*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${WebStack.Outputs.WebBucket}/*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'

@@ -308,7 +308,7 @@ Resources:
                 Action:
                   - 's3:GetObject'
                 Resource:
-                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}-build-${AWS::AccountId}-${AWS::Region}'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}-build-${AWS::AccountId}-${AWS::Region}/*'
               - Effect: 'Allow'
                 Action:
                   - 'ssm:GetParameter*'
