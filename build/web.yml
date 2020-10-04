@@ -385,6 +385,9 @@ Resources:
     Properties:
       DomainName: !Sub '${DomainName}'
       ValidationMethod: 'DNS'
+      DomainValidationOptions:
+        - DomainName: !Sub '${DomainName}'
+          HostedZoneId: !Sub '${HostedZone}'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'

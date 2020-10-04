@@ -274,24 +274,24 @@ Resources:
 
   # Web
   
-  # WebStack:
-  #   Type: 'AWS::CloudFormation::Stack'
-  #   DependsOn:
-  #     - 'CloudFormationDeployRole'
-  #   Properties:
-  #     TemplateURL: './web.yml'
-  #     Parameters:
-  #       Application: !Sub '${Application}'
-  #       Environment: !Sub '${Environment}'
-  #       DomainName: !Sub '${DomainName}'
-  #       CloudFormationDeployRole: !Sub '${CloudFormationDeployRole}'
-  #     Tags:
-  #       - Key: 'Application'
-  #         Value: !Sub '${Application}'
-  #       - Key: 'Environment'
-  #         Value: !Sub '${Environment}'
-  #       - Key: 'Resource'
-  #         Value: !Sub '${Application}-${Environment}-web-stack'
+  WebStack:
+    Type: 'AWS::CloudFormation::Stack'
+    DependsOn:
+      - 'CloudFormationDeployRole'
+    Properties:
+      TemplateURL: './web.yml'
+      Parameters:
+        Application: !Sub '${Application}'
+        Environment: !Sub '${Environment}'
+        DomainName: !Sub '${DomainName}'
+        CloudFormationDeployRole: !Sub '${CloudFormationDeployRole}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub '${Application}-${Environment}-web-stack'
 
   # EFS
   
@@ -937,21 +937,21 @@ Resources:
                     "AlertEmail": "${AlertEmail}",
                     "AlertPhone": "${AlertPhone}"
                   }
-        # - Name: 'StaticWebContentDeploy'
-        #   Actions:
-        #     - Name: 'StaticWebContentDeployAction'
-        #       InputArtifacts: 
-        #         - Name: 'WebArtifact'
-        #       ActionTypeId: 
-        #         Category: 'Deploy'
-        #         Owner: 'AWS'
-        #         Provider: 'S3'
-        #         Version: '1'
-        #       Configuration:
-        #         BucketName: !Sub '${WebStack.Outputs.WebBucket}'
-        #         Extract: 'true'
-        #         CannedACL: 'public-read'
-        #         CacheControl: 'no-cache, no-store, must-revalidate'
+        - Name: 'StaticWebContentDeploy'
+          Actions:
+            - Name: 'StaticWebContentDeployAction'
+              InputArtifacts: 
+                - Name: 'WebArtifact'
+              ActionTypeId: 
+                Category: 'Deploy'
+                Owner: 'AWS'
+                Provider: 'S3'
+                Version: '1'
+              Configuration:
+                BucketName: !Sub '${WebStack.Outputs.WebBucket}'
+                Extract: 'true'
+                CannedACL: 'public-read'
+                CacheControl: 'no-cache, no-store, must-revalidate'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
