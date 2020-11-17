@@ -2,6 +2,7 @@
 
 ORIG_DIR="$PWD"
 
+docker login --username=$DOCKER_HUB_USER --password=$DOCKER_HUB_PASSWORD
 $(aws ecr get-login --no-include-email)
 cp -LR $CODEBUILD_SRC_DIR/containers $CODEBUILD_SRC_DIR/build/
 

@@ -135,6 +135,7 @@ Resources:
   ExampleFunction:
     Type: 'AWS::Serverless::Function'
     Properties:
+      FunctionName: !Sub '${Application}-${Environment}-example'
       CodeUri: './lambdas/example'
       Tags:
         Resource: !Sub 'example-function'
@@ -200,9 +201,10 @@ Resources:
   
   # Analytics
   
-  LogsBucket:
+  WebLogsBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
+      BucketName: !Sub '${Application}-${Environment}-${AWS::AccountId}-${AWS::Region}-web-logs'
       AccessControl: 'LogDeliveryWrite'
       Tags:
         - Key: 'Application'
@@ -210,7 +212,7 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-logs-bucket'
+          Value: !Sub '${Application}-${Environment}-web-logs-bucket'
   
   WebAnalyticsWorkgroup:
     Type: 'AWS::Athena::WorkGroup'
@@ -226,7 +228,7 @@ Resources:
         RequesterPaysEnabled: false
         ResultConfiguration:
           # EncryptionConfiguration:
-          OutputLocation: !Sub 's3://${LogsBucket}/query-results/'
+          OutputLocation: !Sub 's3://${WebLogsBucket}/query-results/'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
@@ -263,7 +265,7 @@ Resources:
           typeOfData: 'file'
           'skip.header.line.count': '2'
         StorageDescriptor:
-          Location: !Sub 's3://${LogsBucket}/web-distribution'
+          Location: !Sub 's3://${WebLogsBucket}/web-distribution'
           Compressed: true
           StoredAsSubDirectories: false
           InputFormat: 'org.apache.hadoop.mapred.TextInputFormat'
@@ -344,8 +346,9 @@ Resources:
   WebBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
+      BucketName: !Sub '${Application}-${Environment}-${AWS::AccountId}-${AWS::Region}-web'
       LoggingConfiguration:
-        DestinationBucketName: !Sub '${LogsBucket}'
+        DestinationBucketName: !Sub '${WebLogsBucket}'
         LogFilePrefix: 'web-bucket/'
       Tags:
         - Key: 'Application'
@@ -417,7 +420,7 @@ Resources:
         IPV6Enabled: true
         PriceClass: 'PriceClass_100'
         Logging:
-          Bucket: !Sub '${LogsBucket.DomainName}'
+          Bucket: !Sub '${WebLogsBucket.DomainName}'
           Prefix: 'web-distribution/'
         Origins:
           - Id: 'WebBucket'

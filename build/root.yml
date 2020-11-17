@@ -41,110 +41,6 @@ Resources:
 
   # Container Definitions
   
-  ExampleTaskRole:
-    Type: 'AWS::IAM::Role'
-    DependsOn:
-      - 'CloudFormationDeployRole'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Action: 'sts:AssumeRole'
-            Principal:
-              Service: !Sub 'ecs-tasks.${AWS::URLSuffix}'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-example-task-role'
-  
-  ExampleFargateDefinition:
-    Type: 'AWS::ECS::TaskDefinition'
-    DependsOn:
-      - 'CloudFormationDeployRole'
-    Properties:
-      Cpu: 256
-      Memory: 512
-      NetworkMode: 'awsvpc'
-      ExecutionRoleArn: !Sub '${EcsTaskExecutionRole.Arn}'
-      TaskRoleArn: !Sub '${ExampleTaskRole.Arn}'
-      RequiresCompatibilities:
-        - 'FARGATE'
-      ContainerDefinitions:
-        - Name: 'example'
-          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}:example'
-          Essential: true
-          Command: ['python3', '-m', 'http.server', '80']
-          LogConfiguration:
-            LogDriver: 'awslogs'
-            Options:
-              awslogs-region: !Sub '${AWS::Region}'
-              awslogs-group: !Sub '${EcsLogGroup}'
-              awslogs-stream-prefix: 'example'
-          MountPoints:
-            - SourceVolume: 'efs'
-              ContainerPath: '/efs'
-          Environment:
-            - Name: 'APPLICATION'
-              Value: !Sub '${Application}'
-            - Name: 'ENVIRONMENT'
-              Value: !Sub '${Environment}'
-            - Name: 'AWS_REGION'
-              Value: !Sub '${AWS::Region}'
-            - Name: 'AWS_DEFAULT_REGION'
-              Value: !Sub '${AWS::Region}'
-      Volumes:
-        - Name: 'efs'
-          EFSVolumeConfiguration:
-            FilesystemId: !Sub '${FileSystem}'
-            TransitEncryption: 'ENABLED'
-            AuthorizationConfig:
-              AccessPointId: !Sub '${EfsAccessPoint}'
-              IAM: 'DISABLED'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub 'example-fargate-definition'
-
-  ExampleService:
-    Type: 'AWS::ECS::Service'
-    DependsOn:
-      - 'CloudFormationDeployRole'
-      - 'MountTargetA'
-      - 'MountTargetB'
-      - 'MountTargetC'
-    Properties:
-      Cluster: !Sub '${EcsCluster}'
-      LaunchType: 'FARGATE'
-      PlatformVersion: '1.4.0'
-      # PropagateTags: 'SERVICE'
-      TaskDefinition: !Sub '${ExampleFargateDefinition}'
-      SchedulingStrategy: 'REPLICA'
-      DesiredCount: 1
-      # LoadBalancers:
-      NetworkConfiguration:
-        AwsVpcConfiguration:
-          AssignPublicIp: 'ENABLED'
-          SecurityGroups:
-            - !Sub '${Vpc.DefaultSecurityGroup}'
-          Subnets:
-            - !Sub '${SubnetA}'
-            - !Sub '${SubnetB}'
-            - !Sub '${SubnetC}'
-      Tags:
-        - Key: 'Application'
-          Value: !Sub '${Application}'
-        - Key: 'Environment'
-          Value: !Sub '${Environment}'
-        - Key: 'Resource'
-          Value: !Sub 'example-ecs-service'
-
   # ECS Environment
 
   EcsCluster:
@@ -169,6 +65,7 @@ Resources:
     DependsOn:
       - 'CloudFormationDeployRole'
     Properties:
+      RoleName: !Sub '${Application}-${Environment}-ecs-task-execution'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -534,7 +431,7 @@ Resources:
     DependsOn:
       - 'CloudFormationDeployRole'
     Properties:
-      BucketName: !Sub '${Application}-${Environment}-build-${AWS::AccountId}-${AWS::Region}'
+      BucketName: !Sub '${Application}-${Environment}-${AWS::AccountId}-${AWS::Region}-build'
       # LifecycleConfiguration:
       #   Rules:
       #     - Id: 'daily-cleanup'
@@ -561,6 +458,7 @@ Resources:
     DependsOn:
       - 'CloudFormationDeployRole'
     Properties:
+      RoleName: !Sub '${Application}-${Environment}-codebuild-cloudformation'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -649,6 +547,7 @@ Resources:
   CloudFormationDeployRole:
     Type: 'AWS::IAM::Role'
     Properties:
+      RoleName: !Sub '${Application}-${Environment}-cloudformation-deploy'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -691,7 +590,7 @@ Resources:
                 Action:
                   - 's3:GetObject'
                 Resource:
-                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}-build-${AWS::AccountId}-${AWS::Region}/*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}*/*'
               - Effect: 'Allow'
                 Action:
                   - 'ssm:GetParameter*'
@@ -726,6 +625,7 @@ Resources:
     DependsOn:
       - 'CloudFormationDeployRole'
     Properties:
+      RoleName: !Sub '${Application}-${Environment}-codebuild-batch'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -759,7 +659,48 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub 'cloudformation-build-role'
+          Value: !Sub 'batch-build-role'
+  
+  ContainerBuildRole:
+    Type: 'AWS::IAM::Role'
+    DependsOn:
+      - 'CloudFormationDeployRole'
+    Properties:
+      RoleName: !Sub '${Application}-${Environment}-codebuild-container'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action: 'sts:AssumeRole'
+            Principal:
+              Service: 
+                - !Sub 'codebuild.${AWS::URLSuffix}'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess'
+      # Policies:
+      #   - PolicyName: 'cloudformation-build'
+      #     PolicyDocument:
+      #       Version: '2012-10-17'
+      #       Statement:
+      #         - Effect: 'Allow'
+      #           Action:
+      #             - 'logs:CreateLogStream'
+      #             - 'logs:PutLogEvents'
+      #           Resource:
+      #             - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Application}-${Environment}-cloudformation*'
+      #         - Effect: 'Allow'
+      #           Action:
+      #             - 's3:GetObject'
+      #             - 's3:PutObject'
+      #           Resource:
+      #             - !Sub '${BuildBucket.Arn}/*'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub 'container-build-role'
   
   ContainerBuildProject:
     Type: 'AWS::CodeBuild::Project'
@@ -780,7 +721,7 @@ Resources:
         TimeoutInMins: 60
       Cache:
         Type: 'NO_CACHE'
-      ServiceRole: !Sub '${BatchBuildRole.Arn}'
+      ServiceRole: !Sub '${ContainerBuildRole.Arn}'
       Source:
         Type: 'CODEPIPELINE'
         BuildSpec: 'build/buildspec_batch.yml'
@@ -795,6 +736,10 @@ Resources:
             Value: !Sub '${Environment}'
           - Name: 'BUILD_BUCKET'
             Value: !Sub '${BuildBucket}'
+          - Name: 'DOCKER_HUB_USER'
+            Value: '{{resolve:ssm:/CodePipeline/dockerhub-user:1}}'
+          - Name: 'DOCKER_HUB_PASSWORD'
+            Value: '{{resolve:ssm:/CodePipeline/dockerhub-password:1}}'
           - Name: 'DOCKER_CLI_EXPERIMENTAL'
             Value: 'enabled'
       Tags:
@@ -810,6 +755,7 @@ Resources:
     DependsOn:
       - 'CloudFormationDeployRole'
     Properties:
+      RoleName: !Sub '${Application}-${Environment}-codepipeline'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -859,6 +805,7 @@ Resources:
     DependsOn:
       - 'CloudFormationDeployRole'
     Properties:
+      Name: !Sub '${Application}-${Environment}'
       ArtifactStore:
         Location: !Sub '${BuildBucket}'
         Type: 'S3'

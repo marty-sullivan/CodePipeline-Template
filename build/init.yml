@@ -46,6 +46,7 @@ Resources:
     DependsOn:
       - 'CloudFormationDeployRole'
     Properties:
+      RoleName: !Sub '${Application}-${Environment}-ecs-task-execution'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -156,7 +157,7 @@ Resources:
     DependsOn:
       - 'CloudFormationDeployRole'
     Properties:
-      BucketName: !Sub '${Application}-${Environment}-build-${AWS::AccountId}-${AWS::Region}'
+      BucketName: !Sub '${Application}-${Environment}-${AWS::AccountId}-${AWS::Region}-build'
       # LifecycleConfiguration:
       #   Rules:
       #     - Id: 'daily-cleanup'
@@ -183,6 +184,7 @@ Resources:
     DependsOn:
       - 'CloudFormationDeployRole'
     Properties:
+      RoleName: !Sub '${Application}-${Environment}-codebuild-cloudformation'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -266,6 +268,7 @@ Resources:
   CloudFormationDeployRole:
     Type: 'AWS::IAM::Role'
     Properties:
+      RoleName: !Sub '${Application}-${Environment}-cloudformation-deploy'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -308,7 +311,7 @@ Resources:
                 Action:
                   - 's3:GetObject'
                 Resource:
-                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}-build-${AWS::AccountId}-${AWS::Region}/*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}*/*'
               - Effect: 'Allow'
                 Action:
                   - 'ssm:GetParameter*'
@@ -343,6 +346,7 @@ Resources:
     DependsOn:
       - 'CloudFormationDeployRole'
     Properties:
+      RoleName: !Sub '${Application}-${Environment}-codebuild-batch'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -376,7 +380,48 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub 'cloudformation-build-role'
+          Value: !Sub 'cloudformation-batch-build-role'
+  
+  ContainerBuildRole:
+    Type: 'AWS::IAM::Role'
+    DependsOn:
+      - 'CloudFormationDeployRole'
+    Properties:
+      RoleName: !Sub '${Application}-${Environment}-codebuild-container'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action: 'sts:AssumeRole'
+            Principal:
+              Service: 
+                - !Sub 'codebuild.${AWS::URLSuffix}'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess'
+      # Policies:
+      #   - PolicyName: 'cloudformation-build'
+      #     PolicyDocument:
+      #       Version: '2012-10-17'
+      #       Statement:
+      #         - Effect: 'Allow'
+      #           Action:
+      #             - 'logs:CreateLogStream'
+      #             - 'logs:PutLogEvents'
+      #           Resource:
+      #             - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Application}-${Environment}-cloudformation*'
+      #         - Effect: 'Allow'
+      #           Action:
+      #             - 's3:GetObject'
+      #             - 's3:PutObject'
+      #           Resource:
+      #             - !Sub '${BuildBucket.Arn}/*'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: !Sub 'container-build-role'
   
   ContainerBuildProject:
     Type: 'AWS::CodeBuild::Project'
@@ -397,7 +442,7 @@ Resources:
         TimeoutInMins: 60
       Cache:
         Type: 'NO_CACHE'
-      ServiceRole: !Sub '${BatchBuildRole.Arn}'
+      ServiceRole: !Sub '${ContainerBuildRole.Arn}'
       Source:
         Type: 'CODEPIPELINE'
         BuildSpec: 'build/buildspec_batch.yml'
@@ -412,6 +457,10 @@ Resources:
             Value: !Sub '${Environment}'
           - Name: 'BUILD_BUCKET'
             Value: !Sub '${BuildBucket}'
+          - Name: 'DOCKER_HUB_USER'
+            Value: '{{resolve:ssm:/CodePipeline/dockerhub-user:1}}'
+          - Name: 'DOCKER_HUB_PASSWORD'
+            Value: '{{resolve:ssm:/CodePipeline/dockerhub-password:1}}'
           - Name: 'DOCKER_CLI_EXPERIMENTAL'
             Value: 'enabled'
       Tags:
@@ -427,6 +476,7 @@ Resources:
     DependsOn:
       - 'CloudFormationDeployRole'
     Properties:
+      RoleName: !Sub '${Application}-${Environment}-codepipeline'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -475,6 +525,7 @@ Resources:
     DependsOn:
       - 'CloudFormationDeployRole'
     Properties:
+      Name: !Sub '${Application}-${Environment}'
       ArtifactStore:
         Location: !Sub '${BuildBucket}'
         Type: 'S3'
