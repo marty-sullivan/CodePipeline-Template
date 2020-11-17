@@ -7,6 +7,12 @@ This repo is a template for containerized applications deployed with CodePipelin
 1. Create a Personal Access Token in GitHub for CodePipeline: https://docs.aws.amazon.com/codepipeline/latest/userguide/GitHub-create-personal-token-CLI.html
 2. Place the Personal Access Token in an SSM Parameter in the desired AWS Account / Region named `/CodePipeline/GitHub`
 
+### Docker Hub Authentication Setup (Currently Manual)
+
+1. Create a Username and Personal Access Token on Docker Hub (free-tier user is fine)
+2. Place the Username in an SSM Parameter in the desired AWS Account / Region named `/CodePipeline/dockerhub-user`
+3. Place the Personal Access Token in an SSM Parameter in the desired AWS Account / Region named `/CodePipeline/dockerhub-password`
+
 ### Application Deployment
 
 1. Authenticate to desired AWS Account with Administrator Access in your bash shell
