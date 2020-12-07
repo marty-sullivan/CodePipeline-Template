@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 API_ID=$(aws cloudformation describe-stacks \
   --stack-name "$APPLICATION-$ENVIRONMENT" \

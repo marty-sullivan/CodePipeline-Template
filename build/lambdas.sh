@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 cp -LR $CODEBUILD_SRC_DIR/lambdas $CODEBUILD_SRC_DIR/build/
 
