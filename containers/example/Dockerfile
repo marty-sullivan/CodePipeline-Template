@@ -11,7 +11,8 @@ WORKDIR /tmp
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
       automake\
-      build-essential && \
+      build-essential \
+      libtool && \
     pip3 install --no-cache-dir \
       cmake && \
     pip3 install --no-cache-dir \
