@@ -1,7 +1,6 @@
 #!/bin/bash
 
-source ./config.sh
-export ENVIRONMENT="$1"
+read -p "Application Name: " APPLICATION
 
 if [[ ! "$APPLICATION" =~ ^[a-z][a-z0-9]*$ ]]
 then
@@ -11,6 +10,15 @@ then
 
 fi
 
+read -p "GitHub Owner/Organization: " GITHUB_OWNER
+
+read -p "GitHub Repository: " GITHUB_REPO
+
+read -p "GitHub Branch: " ENVIRONMENT
+
+ALERT_EMAIL=""
+ALERT_PHONE=""
+
 if [[ ! "$ENVIRONMENT" =~ ^[a-z][a-z0-9]*$ ]]
 then
 
@@ -19,19 +27,16 @@ then
 
 fi
 
-# if [[ ! "$GITHUB_REPO" =~ ^https?:\/\/[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)$ ]]
-# then
+read -p "Fully Qualified Domain Name: " DOMAIN_NAME
 
-#   echo "ERROR: GITHUB_REPO must be a valid HTTPS URL pointing to a GitHub repository"
-#   exit 1
+printf "\n\tApplication: $APPLICATION\n\tEnvironment: $ENVIRONMENT\n\tGitHub Repo: $GITHUB_OWNER/$GITHUB_REPO\n\tFQDN: $DOMAIN_NAME\n\n"
 
-# fi
+read -p "Is this correct (y/n)? " -n 1 -r
 
-if [[ $ENVIRONMENT != "master" ]]
+if [[ ! $REPLY =~ ^[Yy]$ ]]
 then
 
-  echo "Setting Non-Master Domain Name: $ENVIRONMENT.$DOMAIN_NAME"
-  DOMAIN_NAME="$ENVIRONMENT.$DOMAIN_NAME"
+  exit
 
 fi
 
@@ -45,6 +50,14 @@ then
   exit 1
 
 fi
+
+if [[ ! "$AWS_ACCOUNT_ID" =~ ^[0-9]{12}$ ]]
+then
+
+  echo "AWS_ACCOUNT_ID environment variable not set or invalid"
+  exit 1
+
+fi 
 
 STACK_DESCRIPTION=$(aws cloudformation describe-stacks --stack-name $STACK_NAME 2>&1)
 
@@ -64,87 +77,70 @@ then
   
 else
 
+  rm -rf ./tmp/build
+  mkdir -p ./tmp/build
+  cp -LR ./lambdas ./tmp/build/
+  cp ./build/cfn_*.yml ./tmp/build/
+  cd ./tmp/build
+
+  INIT_BUCKET="deployment-artifacts-$AWS_ACCOUNT_ID-$AWS_DEFAULT_REGION"
+  
+  aws s3 mb s3://$INIT_BUCKET 2> /dev/null
+
+  echo "Creating Pipeline Artifact Bucket in us-east-1..."
+  
+  US_EAST_1_PIPELINE_ARTIFACT_BUCKET="pipeline-artifacts-$AWS_ACCOUNT_ID-us-east-1"
+  
+  aws --region "us-east-1" s3 mb s3://$PIPELINE_ARTIFACT_BUCKET_US_EAST_1 2> /dev/null
+
+  echo "Creating Web Distribution Certificate in us-east-1..."
+  
+  WEB_DISTRIBUTION_CERTIFICATE=$(aws acm request-certificate \
+    --region 'us-east-1' \
+    --domain-name $DOMAIN_NAME \
+    --subject-alternative-names *.$DOMAIN_NAME \
+    --validation-method DNS \
+    --query 'CertificateArn' \
+    --output text)
+  
+  CERTIFICATE_RESOURCE_RECORD=$(aws acm describe-certificate \
+    --certificate-arn $WEB_DISTRIBUTION_CERTIFICATE \
+    --region 'us-east-1' \
+    --query 'Certificate.DomainValidationOptions[0].ResourceRecord' \
+    --output text)
+  
+  echo "Created Certificate: $WEB_DISTRIBUTION_CERTIFICATE"
+  printf "Certificate DNS Validation Resource Record:\n$CERTIFICATE_RESOURCE_RECORD\n"
+  
+  echo "Packaging CloudFormation Template..."
+  
+  aws cloudformation package \
+    --template-file ./cfn_main.yml \
+    --s3-bucket $INIT_BUCKET \
+    --output-template-file ./cfn_main_packaged.yml
+
   echo "Initializing $STACK_NAME CloudFormation Stack..."
   
   aws cloudformation deploy \
     --stack-name "$STACK_NAME" \
-    --template-file ./build/init.yml \
-    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+    --template-file ./cfn_main_packaged.yml \
+    --s3-bucket $INIT_BUCKET \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
     --parameter-overrides \
       "Application=$APPLICATION" \
       "Environment=$ENVIRONMENT" \
       "DomainName=$DOMAIN_NAME" \
       "GitHubOwner=$GITHUB_OWNER" \
       "GitHubRepo=$GITHUB_REPO" \
+      "WebDistributionCertificate=$WEB_DISTRIBUTION_CERTIFICATE" \
+      "UsEast1PipelineArtifactBucket=$US_EAST_1_PIPELINE_ARTIFACT_BUCKET" \
       "AlertEmail=$ALERT_EMAIL" \
       "AlertPhone=$ALERT_PHONE" \
     --tags \
       "Application=$APPLICATION" \
       "Environment=$ENVIRONMENT" \
 
-  # if [ "$ENVIRONMENT" == "master" ]
-  # then
-  
-  #   echo "Enabling Termination Protection for master branch stack $STACK_NAME"
-    
-  #   aws cloudformation update-termination-protection \
-  #     --stack-name "$STACK_NAME" \
-  #     --enable-termination-protection > /dev/null
-  
-  # fi
-
-  # BUILD_PROJECT=$(aws cloudformation describe-stacks \
-  #   --stack-name "$STACK_NAME" \
-  #   --query 'Stacks[0].Outputs[?OutputKey==`BuildProject`].OutputValue' \
-  #   --output text)
-  
-  # echo "Setting GitHub branch filter for CodeBuild Project $BUILD_PROJECT..."
-  
-  # aws codebuild update-webhook \
-  #   --project-name "$BUILD_PROJECT" \
-  #   --branch-filter "$ENVIRONMENT" \
-  #   --rotate-secret > /dev/null
-  
-  # echo "Building full application stack via AWS CodeBuild..."
-  
-  # BUILD_ID=$(aws codebuild start-build \
-  #   --project-name "$BUILD_PROJECT" \
-  #   --source-version "$ENVIRONMENT" \
-  #   --query 'build.id' \
-  #   --output text)
-
-  # echo "You can watch progress at the following URI:"
-  # echo "https://console.aws.amazon.com/codesuite/codebuild/projects/$BUILD_PROJECT/build/$BUILD_ID/log"
-
-  # while [ true ]
-  # do
-  
-  #   sleep 10
-    
-  #   BUILD_STATUS=$(aws codebuild batch-get-builds \
-  #   --ids "$BUILD_ID" \
-  #   --query 'builds[0].buildStatus' \
-  #   --output text)
-    
-  #   if [ "$BUILD_STATUS" != "IN_PROGRESS" ]
-  #   then
-    
-  #     break
-    
-  #   fi
-  
-  # done
-  
-  # if [ "$BUILD_STATUS" != "SUCCEEDED" ]
-  # then
-  
-  #   echo "There was a problem with the build! Check the console for logs..."
-  #   exit 1
-  
-  # else
-  
-  #   echo "$STACK_NAME Fully Initialized!"
-    
-  # fi
+  cd ../..
+  rm -rf ./tmp/build
 
 fi

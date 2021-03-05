@@ -7,11 +7,6 @@ docker login --username=$DOCKER_HUB_USER --password=$DOCKER_HUB_PASSWORD
 $(aws ecr get-login --no-include-email)
 cp -LR $CODEBUILD_SRC_DIR/containers $CODEBUILD_SRC_DIR/build/
 
-CONTAINER_REPO=$(aws cloudformation describe-stacks \
-  --stack-name "$APPLICATION-$ENVIRONMENT" \
-  --query 'Stacks[0].Outputs[?OutputKey==`EcsRepository`].OutputValue' \
-  --output text)
-  
 for dir in $CODEBUILD_SRC_DIR/build/containers/*
 do
 
@@ -24,22 +19,27 @@ do
   
   fi
   
-  echo "Building Container $CONTAINER_NAME-$(uname -m)..."
+  CONTAINER_TAG="$CONTAINER_REPO:$CONTAINER_NAME"
+  CONTAINER_BUILD_TAG="$CONTAINER_TAG-$CODEBUILD_RESOLVED_SOURCE_VERSION"
+  CONTAINER_ARCH_TAG="$CONTAINER_TAG-$(uname -m)"
+  CONTAINER_ARCH_BUILD_TAG="$CONTAINER_BUILD_TAG-$(uname -m)"
+  
+  echo "Building Container $CONTAINER_ARCH_BUILD_TAG..."
   
   cd $dir
   cp -LR $CODEBUILD_SRC_DIR/common/* ./
-  docker pull "$CONTAINER_REPO:$CONTAINER_NAME-$(uname -m)"
+  docker pull "$CONTAINER_ARCH_TAG" || true
   
   docker build \
-    --cache-from "$CONTAINER_REPO:$CONTAINER_NAME-$(uname -m)" \
+    --cache-from "$CONTAINER_ARCH_TAG" \
     --pull \
-    -t "$CONTAINER_REPO:$CONTAINER_NAME-$(uname -m)" \
+    --build-arg "BUILD_BUCKET=$BUILD_BUCKET" \
+    -t "$CONTAINER_ARCH_BUILD_TAG" \
     .
   
-  docker push "$CONTAINER_REPO:$CONTAINER_NAME-$(uname -m)"
-  
-  docker manifest create "$CONTAINER_REPO:$CONTAINER_NAME" "$CONTAINER_REPO:$CONTAINER_NAME-x86_64" "$CONTAINER_REPO:$CONTAINER_NAME-aarch64"
-  docker manifest push "$CONTAINER_REPO:$CONTAINER_NAME"
+  docker push "$CONTAINER_ARCH_BUILD_TAG"
+  docker tag "$CONTAINER_ARCH_BUILD_TAG" "$CONTAINER_ARCH_TAG"
+  docker push "$CONTAINER_ARCH_TAG"
   
   cd $ORIG_DIR
 

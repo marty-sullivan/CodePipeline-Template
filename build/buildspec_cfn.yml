@@ -18,12 +18,14 @@ phases:
 artifacts:
   name: 'CloudFormationArtifact'
   files:
-    - 'build/packaged.yml'
+    - 'build/cfn_main_packaged.yml'
+    - 'build/cfn_configuration.json'
   secondary-artifacts:
     CloudFormationArtifact:
       name: 'CloudFormationArtifact'
       files:
-        - 'build/packaged.yml'
+        - 'build/cfn_main_packaged.yml'
+        - 'build/cfn_configuration.json'
     WebArtifact:
       name: 'WebArtifact'
       files:

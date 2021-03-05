@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
-Description: 'Severless Template'
+Description: 'CodePipeline Template'
 
 Parameters:
 
@@ -24,6 +24,19 @@ Parameters:
     Description: 'The GitHub repository name for this application'
     Type: 'String'
   
+  GitHubSourceVersion:
+    Default: 'initializing'
+    Description: 'The source version to use for container tags'
+    Type: 'String'
+  
+  WebDistributionCertificate:
+    Description: 'The web distribution certificate (must be in us-east-1)'
+    Type: 'String'
+  
+  UsEast1PipelineArtifactBucket:
+    Description: 'The pipeline artifact bucket for us-east-1'
+    Type: 'String'
+  
   AlertEmail:
     Description: 'Email to which administrative alerts are sent'
     Type: 'String'
@@ -31,22 +44,50 @@ Parameters:
   AlertPhone:
     Description: 'Phone number to which administrative alerts are sent via SMS'
     Type: 'String'
-    
-Outputs:
+  
+  EcsX86Ami:
+    Description: 'x86_64 ECS Optimized AMI'
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id'
+  
+  EcsArmAmi:
+    Description: 'aarch64 ECS Optimized AMI'
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ecs/optimized-ami/amazon-linux-2/arm64/recommended/image_id'
+  
+  CloudFrontHostedZone:
+    Default: 'Z2FDTNDATAQYW2'
+    Description: 'Global Hosted Zone for the CloudFront Service'
+    Type: 'String'
+  
+Conditions:
+  
+  IsNotInitializing: !Not
+    - !Equals
+      - !Sub '${GitHubSourceVersion}'
+      - 'initializing'
 
-  EcsRepository:
-    Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}'
-
+Globals:
+  
+  Function:
+    MemorySize: 1792
+    Timeout: 30
+    Tags:
+      Application: !Sub '${Application}'
+      Environment: !Sub '${Environment}'
+    Environment:
+      Variables:
+        APPLICATION: !Sub '${Application}'
+        ENVIRONMENT: !Sub '${Environment}'
+        AWS_ACCOUNT_ID: !Sub '${AWS::AccountId}'
+        
 Resources:
 
-  # Container Definitions
-  
   # ECS Environment
 
   EcsCluster:
     Type: 'AWS::ECS::Cluster'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       ClusterName: !Sub '${Application}-${Environment}'
       ClusterSettings: 
@@ -58,12 +99,16 @@ Resources:
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub 'ecs-cluster'
+          Value: 'ecs-cluster'
+
+  EcsLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/${Application}/${Environment}/ecs'
+      RetentionInDays: 14
 
   EcsTaskExecutionRole:
     Type: 'AWS::IAM::Role'
-    DependsOn:
-      - 'CloudFormationDeployRole'
     Properties:
       RoleName: !Sub '${Application}-${Environment}-ecs-task-execution'
       AssumeRolePolicyDocument:
@@ -105,18 +150,8 @@ Resources:
         - Key: 'Resource'
           Value: !Sub 'ecs-task-execution-role'
 
-  EcsLogGroup:
-    Type: 'AWS::Logs::LogGroup'
-    DependsOn:
-      - 'CloudFormationDeployRole'
-    Properties:
-      LogGroupName: !Sub '/${Application}/${Environment}/ecs'
-      RetentionInDays: 14
-
   EcsRepository:
     Type: 'AWS::ECR::Repository'
-    DependsOn:
-      - 'CloudFormationDeployRole'
     Properties:
       RepositoryName: !Sub '${Application}-${Environment}'
       RepositoryPolicyText:
@@ -132,7 +167,7 @@ Resources:
               - 'ecr:BatchCheckLayerAvailability'
           - Effect: 'Allow'
             Principal:
-              AWS: !Sub '${BatchBuildRole.Arn}'
+              AWS: !Sub '${ContainerBuildRole.Arn}'
             Action:
               - 'ecr:BatchGetImage'
               - 'ecr:BatchCheckLayerAvailability'
@@ -169,36 +204,500 @@ Resources:
         - Key: 'Resource'
           Value: !Sub 'ecs-respository'
 
-  # Web
-  
-  WebStack:
-    Type: 'AWS::CloudFormation::Stack'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+  EcsInstanceRole:
+    Type: 'AWS::IAM::Role'
+    Condition: 'IsNotInitializing'
     Properties:
-      TemplateURL: './web.yml'
-      Parameters:
-        Application: !Sub '${Application}'
-        Environment: !Sub '${Environment}'
-        DomainName: !Sub '${DomainName}'
-        CloudFormationDeployRole: !Sub '${CloudFormationDeployRole}'
+      RoleName: !Sub '${Application}-${Environment}-ecs-instance'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action: 'sts:AssumeRole'
+            Principal:
+              Service: !Sub 'ec2.${AWS::URLSuffix}'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
         - Key: 'Environment'
           Value: !Sub '${Environment}'
         - Key: 'Resource'
-          Value: !Sub '${Application}-${Environment}-web-stack'
+          Value: !Sub 'ecs-instance-role'
+
+  EcsInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Condition: 'IsNotInitializing'
+    Properties:
+      InstanceProfileName: !Sub '${Application}-${Environment}-ecs-instance'
+      Roles:
+        - !Sub '${EcsInstanceRole}'
+
+  # Api
+
+  ApiCertificate:
+    Type: 'AWS::CertificateManager::Certificate'
+    Condition: 'IsNotInitializing'
+    Properties:
+      DomainName: !Sub '${DomainName}'
+      ValidationMethod: 'DNS'
+      SubjectAlternativeNames:
+        - !Sub '*.${DomainName}'
+      DomainValidationOptions:
+        - DomainName: !Sub '${DomainName}'
+          HostedZoneId: !Sub '${HostedZone}'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: 'api-certificate'
+  
+  ApiUsagePlan:
+    Type: 'AWS::ApiGateway::UsagePlan'
+    Condition: 'IsNotInitializing'
+    DependsOn:
+      - 'ApiapiStage'
+    Properties:
+      UsagePlanName: !Sub '${Application}-${Environment}'
+      Description: !Sub 'Usage Plan for ${Application}-${Environment}'
+      ApiStages:
+        - ApiId: !Sub '${Api}'
+          Stage: 'api'
+          #Throttle:
+      #Quota:
+      #Throttle:
+
+  ApiDomain:
+    Type: 'AWS::ApiGateway::DomainName'
+    Condition: 'IsNotInitializing'
+    Properties:
+      DomainName: !Sub '${DomainName}'
+      RegionalCertificateArn: !Sub '${ApiCertificate}'
+      EndpointConfiguration:
+        Types:
+          - 'REGIONAL'
+  
+  ApiDomainMapping:
+    Type: 'AWS::ApiGateway::BasePathMapping'
+    Condition: 'IsNotInitializing'
+    Properties:
+      DomainName: !Sub '${ApiDomain}'
+      RestApiId: !Sub '${Api}'
+  
+  Api:
+    Type: 'AWS::Serverless::Api'
+    Condition: 'IsNotInitializing'
+    Properties:
+      EndpointConfiguration: 'REGIONAL'
+      StageName: 'api'
+      Tags:
+        Application: !Sub '${Application}'
+        Environment: !Sub '${Environment}'
+        Resource: !Sub 'api'
+      DefinitionBody:
+        swagger: 2.0
+        info:
+          title: !Sub '${Application}-${Environment}'
+        securityDefinitions:
+          api_key:
+            type: 'apiKey'
+            name: 'x-api-key'
+            in: 'header'
+        definitions:
+          Empty:
+            type: 'object'
+            title: 'Empty Schema'
+        paths:
+          '/example-container/{message}':
+            get:
+              consumes:
+                - 'application/json'
+              produces:
+                - 'application/json'
+              # security:
+              #   - api_key: []
+              x-amazon-apigateway-integration:
+                type: 'aws_proxy'
+                httpMethod: 'POST'
+                responses: { }
+                uri:
+                  !Sub 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ExampleContainerFunction.Arn}/invocations'
+            # options:
+            #   consumes:
+            #     - 'application/json'
+            #   produces:
+            #     - 'application/json'
+            #   responses:
+            #     '200':
+            #       description: '200 response'
+            #       schema:
+            #         $ref: '#/definitions/Empty'
+            #       headers:
+            #         Access-Control-Allow-Origin:
+            #           type: 'string'
+            #         Access-Control-Allow-Methods:
+            #           type: 'string'
+            #         Access-Control-Allow-Headers:
+            #           type: 'string'
+            #   x-amazon-apigateway-integration:
+            #     type: 'mock'
+            #     passthroughBehavior: 'when_no_match'
+            #     requestTemplates:
+            #       application/json: "{\"statusCode\": 200}"
+            #     responses:
+            #       default:
+            #         statusCode: '200'
+            #         responseParameters:
+            #           method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+            #           method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+            #           method.response.header.Access-Control-Allow-Origin: "'*'"
+
+  ExampleContainerFunction:
+    Type: 'AWS::Serverless::Function'
+    Condition: 'IsNotInitializing'
+    DependsOn:
+      - 'MountTargetA'
+      - 'MountTargetB'
+      - 'MountTargetC'
+    Properties:
+      FunctionName: !Sub '${Application}-${Environment}-get-standard-tile'
+      PackageType: 'Image'
+      ImageUri: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}:example-${GitHubSourceVersion}-x86_64'
+      ImageConfig:
+        Command: [ 'lambda_entry.hello_world' ]
+        EntryPoint: [ '/usr/local/bin/python', '-m', 'awslambdaric' ]
+        WorkingDirectory: '/opt'
+      Events:
+        ApiExampleResource:
+          Type: 'Api'
+          Properties:
+            Path: '/example-container/{message}'
+            Method: 'GET'
+            RestApiId: !Ref 'Api'
+      Tags:
+        Resource: 'container-example-function'
+      Policies:
+        - 'AWSLambdaBasicExecutionRole'
+
+  ExampleContainerFunctionLogs:
+    Type: 'AWS::Logs::LogGroup'
+    Condition: 'IsNotInitializing'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ExampleContainerFunction}'
+      RetentionInDays: 14
+      
+  # Route53
+      
+  HostedZone:
+    Type: 'AWS::Route53::HostedZone'
+    Condition: 'IsNotInitializing'
+    Properties:
+      Name: !Sub '${DomainName}'
+      HostedZoneConfig:
+        Comment: !Sub '${Application}-${Environment}'
+      HostedZoneTags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: 'hosted-zone'
+  
+  # Analytics
+  
+  AnalyticsBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub '${Application}-${Environment}-${AWS::AccountId}-${AWS::Region}-analytics'
+      AccessControl: 'LogDeliveryWrite'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: 'analytics-bucket'
+  
+  AnalyticsWorkgroup:
+    Type: 'AWS::Athena::WorkGroup'
+    Condition: 'IsNotInitializing'
+    Properties:
+      Name: !Sub '${Application}-${Environment}-analytics'
+      State: 'ENABLED'
+      WorkGroupConfiguration:
+        # BytesScannedCutoffPerQuery:
+        EnforceWorkGroupConfiguration: true
+        PublishCloudWatchMetricsEnabled: true
+        RequesterPaysEnabled: false
+        ResultConfiguration:
+          # EncryptionConfiguration:
+          OutputLocation: !Sub 's3://${AnalyticsBucket}/athena-query-results/'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: 'web-analytics-workgroup'
+
+  AnalyticsDatabase:
+    Type: 'AWS::Glue::Database'
+    Condition: 'IsNotInitializing'
+    Properties:
+      CatalogId: !Sub '${AWS::AccountId}'
+      DatabaseInput:
+        Name: !Sub '${Application}_${Environment}_analytics'
+        Description: !Sub 'Analytics Tables for ${Application}-${Environment}'
+  
+  WebAnalyticsCloudFrontTable:
+    Type: 'AWS::Glue::Table'
+    Condition: 'IsNotInitializing'
+    Properties:
+      CatalogId: !Sub '${AWS::AccountId}'
+      DatabaseName: !Sub '${AnalyticsDatabase}'
+      TableInput:
+        Name: 'cloudfront_raw'
+        Description: !Sub 'Raw CloudFront Requests Table for ${Application}-${Environment}'
+        Owner: 'hadoop'
+        Retention: 0
+        TableType: 'EXTERNAL_TABLE'
+        Parameters:
+          classification: 'csv'
+          compressionType: 'gzip'
+          EXTERNAL: 'TRUE'
+          typeOfData: 'file'
+          'skip.header.line.count': '2'
+        StorageDescriptor:
+          Location: !Sub 's3://${AnalyticsBucket}/web-distribution'
+          Compressed: true
+          StoredAsSubDirectories: false
+          InputFormat: 'org.apache.hadoop.mapred.TextInputFormat'
+          OutputFormat: 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+          SerdeInfo:
+            SerializationLibrary: 'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe'
+            Parameters:
+              'serialization.format': "\t"
+              'field.delim': "\t"
+          Columns:
+            - Name: 'date'
+              Type: 'date'
+            - Name: 'time'
+              Type: 'string'
+            - Name: 'location'
+              Type: 'string'
+            - Name: 'bytes'
+              Type: 'bigint'
+            - Name: 'requestip'
+              Type: 'string'
+            - Name: 'method'
+              Type: 'string'
+            - Name: 'host'
+              Type: 'string'
+            - Name: 'uri'
+              Type: 'string'
+            - Name: 'status'
+              Type: 'bigint'
+            - Name: 'referrer'
+              Type: 'string'
+            - Name: 'useragent'
+              Type: 'string'
+            - Name: 'querystring'
+              Type: 'string'
+            - Name: 'cookie'
+              Type: 'string'
+            - Name: 'resulttype'
+              Type: 'string'
+            - Name: 'requestid'
+              Type: 'string'
+            - Name: 'hostheader'
+              Type: 'string'
+            - Name: 'requestprotocol'
+              Type: 'string'
+            - Name: 'requestbytes'
+              Type: 'bigint'
+            - Name: 'timetaken'
+              Type: 'double'
+            - Name: 'xforwardedfor'
+              Type: 'string'
+            - Name: 'sslprotocol'
+              Type: 'string'
+            - Name: 'sslcipher'
+              Type: 'string'
+            - Name: 'responseresulttype'
+              Type: 'string'
+            - Name: 'httpversion'
+              Type: 'string'
+            - Name: 'filestatus'
+              Type: 'string'
+            - Name: 'encryptedfields'
+              Type: 'bigint'
+            - Name: 'port'
+              Type: 'bigint'
+            - Name: 'time_to_first_byte'
+              Type: 'double'
+            - Name: 'detailed_result_type'
+              Type: 'string'
+            - Name: 'content_length'
+              Type: 'bigint'
+            - Name: 'range_start'
+              Type: 'bigint'
+            - Name: 'range_end'
+              Type: 'bigint'
+  
+  # Web Distribution
+          
+  WebDistributionBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub '${Application}-${Environment}-${AWS::AccountId}-${AWS::Region}-web'
+      LoggingConfiguration:
+        DestinationBucketName: !Sub '${AnalyticsBucket}'
+        LogFilePrefix: 'web-distribution-bucket/'
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: 'web-distribution-bucket'
+  
+  WebDistributionBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Condition: 'IsNotInitializing'
+    Properties:
+      Bucket: !Sub '${WebDistributionBucket}'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              CanonicalUser: !Sub '${WebDistributionIdentity.S3CanonicalUserId}'
+            Action:
+              's3:GetObject'
+            Resource:
+              - !Sub '${WebDistributionBucket.Arn}/*'
+  
+  WebDistributionIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Condition: 'IsNotInitializing'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub '${Application}-${Environment}'
+  
+  WebDistributionRecordSets:
+    Type: 'AWS::Route53::RecordSetGroup'
+    Condition: 'IsNotInitializing'
+    Properties:
+      Comment: !Sub '${Application}-${Environment}-cloudfront'
+      HostedZoneId: !Sub '${HostedZone}'
+      RecordSets:
+        - Name: !Sub '${DomainName}.'
+          Type: 'A'
+          AliasTarget:
+            DNSName: !Sub '${WebDistribution.DomainName}'
+            HostedZoneId: !Sub '${CloudFrontHostedZone}'
+            EvaluateTargetHealth: false
+        - Name: !Sub '${DomainName}.'
+          Type: 'AAAA'
+          AliasTarget:
+            DNSName: !Sub '${WebDistribution.DomainName}'
+            HostedZoneId: !Sub '${CloudFrontHostedZone}'
+            EvaluateTargetHealth: false
+    
+  WebDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Condition: 'IsNotInitializing'
+    Properties:
+      Tags:
+        - Key: 'Application'
+          Value: !Sub '${Application}'
+        - Key: 'Environment'
+          Value: !Sub '${Environment}'
+        - Key: 'Resource'
+          Value: 'web-distribution'
+      DistributionConfig:
+        Comment: !Sub '${Application}-${Environment}'
+        Enabled: true
+        Aliases:
+          - !Sub '${DomainName}'
+        # CustomErrorResponses
+        DefaultRootObject: 'index.html'
+        HttpVersion: 'http2'
+        IPV6Enabled: true
+        PriceClass: 'PriceClass_All'
+        Logging:
+          Bucket: !Sub '${AnalyticsBucket.DomainName}'
+          Prefix: 'web-distribution/'
+        Origins:
+          - Id: 'WebDistributionBucket'
+            DomainName: !Sub '${WebDistributionBucket.RegionalDomainName}'
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${WebDistributionIdentity}'
+          - Id: 'Api'
+            DomainName: !Sub '${ApiDomain.RegionalDomainName}'
+            CustomOriginConfig:
+              OriginProtocolPolicy: 'https-only'
+              OriginSSLProtocols:
+                - 'TLSv1.2'
+        CacheBehaviors:
+          - TargetOriginId: 'Api'
+            PathPattern: 'api/*'
+            AllowedMethods:
+              - 'DELETE'
+              - 'GET'
+              - 'HEAD'
+              - 'OPTIONS'
+              - 'PATCH'
+              - 'POST'
+              - 'PUT'
+            CachedMethods:
+              - 'GET'
+              - 'HEAD'
+              - 'OPTIONS'
+            Compress: true
+            DefaultTTL: 0
+            MaxTTL: 0
+            MinTTL: 0
+            ViewerProtocolPolicy: 'https-only'
+            ForwardedValues:
+              QueryString: true
+              Headers:
+                - '*'
+        DefaultCacheBehavior:
+          TargetOriginId: 'WebDistributionBucket'
+          Compress: true
+          DefaultTTL: 0
+          MaxTTL: 0
+          MinTTL: 0
+          ViewerProtocolPolicy: 'redirect-to-https'
+          ForwardedValues:
+            QueryString: false
+        ViewerCertificate:
+          AcmCertificateArn: !Sub '${WebDistributionCertificate}'
+          MinimumProtocolVersion: 'TLSv1.1_2016'
+          SslSupportMethod: 'sni-only'
 
   # EFS
   
   FileSystem:
     Type: 'AWS::EFS::FileSystem'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       PerformanceMode: 'generalPurpose'
       ThroughputMode: 'bursting'
+      LifecyclePolicies:
+        - TransitionToIA: 'AFTER_7_DAYS'
+      FileSystemPolicy: 
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              AWS: !Sub '*'
+            Action: 
+              - 'elasticfilesystem:Client*'
       FileSystemTags:
         - Key: 'Application'
           Value: !Sub '${Application}'
@@ -211,10 +710,12 @@ Resources:
 
   EfsAccessPoint:
     Type: 'AWS::EFS::AccessPoint'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       FileSystemId: !Sub '${FileSystem}'
+      PosixUser:
+        Gid: '0'
+        Uid: '0'
       AccessPointTags:
         - Key: 'Application'
           Value: !Sub '${Application}'
@@ -227,8 +728,7 @@ Resources:
 
   MountTargetA:
     Type: 'AWS::EFS::MountTarget'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       FileSystemId: !Sub '${FileSystem}'
       SubnetId: !Sub '${SubnetA}'
@@ -237,8 +737,7 @@ Resources:
       
   MountTargetB:
     Type: 'AWS::EFS::MountTarget'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       FileSystemId: !Sub '${FileSystem}'
       SubnetId: !Sub '${SubnetB}'
@@ -247,8 +746,7 @@ Resources:
       
   MountTargetC:
     Type: 'AWS::EFS::MountTarget'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       FileSystemId: !Sub '${FileSystem}'
       SubnetId: !Sub '${SubnetC}'
@@ -259,8 +757,7 @@ Resources:
 
   Vpc:
     Type: 'AWS::EC2::VPC'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       CidrBlock: '10.0.0.0/16'
       EnableDnsHostnames: true
@@ -277,8 +774,7 @@ Resources:
   
   InternetGateway:
     Type: 'AWS::EC2::InternetGateway'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       Tags:
         - Key: 'Application'
@@ -292,16 +788,14 @@ Resources:
   
   InternetGatewayAttachment:
     Type: 'AWS::EC2::VPCGatewayAttachment'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       InternetGatewayId: !Sub '${InternetGateway}'
       VpcId: !Sub '${Vpc}'
 
   RouteTable:
     Type: 'AWS::EC2::RouteTable'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       VpcId: !Sub '${Vpc}'
       Tags:
@@ -316,28 +810,24 @@ Resources:
   
   InternetRoute:
     Type: 'AWS::EC2::Route'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       DestinationCidrBlock: '0.0.0.0/0'
       GatewayId: !Sub '${InternetGateway}'
       RouteTableId: !Sub '${RouteTable}'
   
-  HttpIngress:
-    Type: 'AWS::EC2::SecurityGroupIngress'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+  S3Route:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Condition: 'IsNotInitializing'
     Properties:
-      GroupId: !Sub '${Vpc.DefaultSecurityGroup}'
-      IpProtocol: 'tcp'
-      CidrIp: '0.0.0.0/0'
-      FromPort: 80
-      ToPort: 80
+      RouteTableIds:
+        - !Sub '${RouteTable}'
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcId: !Sub '${Vpc}'
   
   SubnetA:
     Type: 'AWS::EC2::Subnet'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties: 
       AvailabilityZone: 
         Fn::Select:
@@ -358,16 +848,14 @@ Resources:
   
   SubnetRouteA:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       RouteTableId: !Sub '${RouteTable}'
       SubnetId: !Sub '${SubnetA}'
   
   SubnetB:
     Type: 'AWS::EC2::Subnet'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties: 
       AvailabilityZone: 
         Fn::Select:
@@ -388,16 +876,14 @@ Resources:
   
   SubnetRouteB:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       RouteTableId: !Sub '${RouteTable}'
       SubnetId: !Sub '${SubnetB}'
   
   SubnetC:
     Type: 'AWS::EC2::Subnet'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties: 
       AvailabilityZone: 
         Fn::Select:
@@ -418,8 +904,7 @@ Resources:
   
   SubnetRouteC:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
-    DependsOn:
-      - 'CloudFormationDeployRole'
+    Condition: 'IsNotInitializing'
     Properties:
       RouteTableId: !Sub '${RouteTable}'
       SubnetId: !Sub '${SubnetC}'
@@ -428,8 +913,6 @@ Resources:
   
   BuildBucket:
     Type: 'AWS::S3::Bucket'
-    DependsOn:
-      - 'CloudFormationDeployRole'
     Properties:
       BucketName: !Sub '${Application}-${Environment}-${AWS::AccountId}-${AWS::Region}-build'
       # LifecycleConfiguration:
@@ -455,8 +938,6 @@ Resources:
 
   CloudFormationBuildRole:
     Type: 'AWS::IAM::Role'
-    DependsOn:
-      - 'CloudFormationDeployRole'
     Properties:
       RoleName: !Sub '${Application}-${Environment}-codebuild-cloudformation'
       AssumeRolePolicyDocument:
@@ -489,12 +970,6 @@ Resources:
                   - 's3:PutObject'
                 Resource:
                   - !Sub '${BuildBucket.Arn}/*'
-              - Effect: 'Allow'
-                Action:
-                  - 'apigateway:*'
-                # TODO: Reduce Permissions
-                Resource:
-                  - '*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
@@ -505,15 +980,11 @@ Resources:
   
   CloudFormationBuildLogs:
     Type: 'AWS::Logs::LogGroup'
-    DependsOn:
-      - 'CloudFormationDeployRole'
     Properties:
       LogGroupName: !Sub '/aws/codebuild/${CloudFormationBuildProject}'
       
   CloudFormationBuildProject:
     Type: 'AWS::CodeBuild::Project'
-    DependsOn:
-      - 'CloudFormationDeployRole'
     Properties:
       Name: !Sub '${Application}-${Environment}-cloudformation'
       TimeoutInMinutes: 15
@@ -534,6 +1005,20 @@ Resources:
             Value: !Sub '${Application}'
           - Name: 'ENVIRONMENT'
             Value: !Sub '${Environment}'
+          - Name: 'DOMAIN_NAME'
+            Value: !Sub '${DomainName}'
+          - Name: 'GITHUB_OWNER'
+            Value: !Sub '${GitHubOwner}'
+          - Name: 'GITHUB_REPO'
+            Value: !Sub '${GitHubRepo}'
+          - Name: 'WEB_DISTRIBUTION_CERTIFICATE'
+            Value: !Sub '${WebDistributionCertificate}'
+          - Name: 'US_EAST_1_PIPELINE_ARTIFACT_BUCKET'
+            Value: !Sub '${UsEast1PipelineArtifactBucket}'
+          - Name: 'ALERT_EMAIL'
+            Value: !Sub '${AlertEmail}'
+          - Name: 'ALERT_PHONE'
+            Value: !Sub '${AlertPhone}'
           - Name: 'BUILD_BUCKET'
             Value: !Sub '${BuildBucket}'
       Tags:
@@ -556,62 +1041,8 @@ Resources:
             Principal:
               Service: 
                 - !Sub 'cloudformation.${AWS::URLSuffix}'
-      # ManagedPolicyArns:
-      #   - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess'
-      Policies:
-        - PolicyName: 'cloudformation-deploy'
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: 'Allow'
-                Action:
-                  - 'codebuild:*'
-                  - 'codepipeline:*'
-                  - 'iam:*'
-                  - 'lambda:*'
-                  - 'logs:*'
-                  - 's3:*Bucket*'
-                Resource:
-                  - !Sub 'arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/${Application}-${Environment}*'
-                  - !Sub 'arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:${Application}-${Environment}*'
-                  - !Sub 'arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:webhook:*'
-                  - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/${Application}-${Environment}*'
-                  - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${Application}-${Environment}*'
-                  - !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${Application}-${Environment}*'
-                  - !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*${Application}*${Environment}*'
-                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}*'
-              - Effect: 'Allow'
-                Action:
-                  - 'cloudformation:*'
-                Resource:
-                  - !Sub '${AWS::StackId}'
-                  - !Sub 'arn:${AWS::Partition}:cloudformation:${AWS::Region}:aws:transform/*'
-              - Effect: 'Allow'
-                Action:
-                  - 's3:GetObject'
-                Resource:
-                  - !Sub 'arn:${AWS::Partition}:s3:::${Application}-${Environment}*/*'
-              - Effect: 'Allow'
-                Action:
-                  - 'ssm:GetParameter*'
-                Resource:
-                  - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CodePipeline/*'
-                  - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${Application}/${Environment}/*'
-              - Effect: 'Allow'
-                Action:
-                  - 'logs:DescribeLogGroups'
-                Resource:
-                  - '*'
-              # TODO: Reduce Permissions here
-              - Effect: 'Allow'
-                Action:
-                  - 'ec2:*'
-                  - 'ecs:*'
-                  - 'ecr:*'
-                  - 'elasticfilesystem:*'
-                  - 'iam:RemoveRoleFromInstanceProfile'
-                Resource:
-                  - '*'
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
@@ -622,8 +1053,6 @@ Resources:
   
   BatchBuildRole:
     Type: 'AWS::IAM::Role'
-    DependsOn:
-      - 'CloudFormationDeployRole'
     Properties:
       RoleName: !Sub '${Application}-${Environment}-codebuild-batch'
       AssumeRolePolicyDocument:
@@ -634,7 +1063,7 @@ Resources:
             Principal:
               Service: 
                 - !Sub 'codebuild.${AWS::URLSuffix}'
-      ManagedPolicyArns:
+      ManagedPolicyArns: # TODO: Reduce Permissions
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess'
       # Policies:
       #   - PolicyName: 'cloudformation-build'
@@ -663,8 +1092,6 @@ Resources:
   
   ContainerBuildRole:
     Type: 'AWS::IAM::Role'
-    DependsOn:
-      - 'CloudFormationDeployRole'
     Properties:
       RoleName: !Sub '${Application}-${Environment}-codebuild-container'
       AssumeRolePolicyDocument:
@@ -675,7 +1102,7 @@ Resources:
             Principal:
               Service: 
                 - !Sub 'codebuild.${AWS::URLSuffix}'
-      ManagedPolicyArns:
+      ManagedPolicyArns: # TODO: Reduce Permissions
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess'
       # Policies:
       #   - PolicyName: 'cloudformation-build'
@@ -704,11 +1131,9 @@ Resources:
   
   ContainerBuildProject:
     Type: 'AWS::CodeBuild::Project'
-    DependsOn:
-      - 'CloudFormationDeployRole'
     Properties:
       Name: !Sub '${Application}-${Environment}-container'
-      TimeoutInMinutes: 60
+      TimeoutInMinutes: 120
       Artifacts:
         Type: 'CODEPIPELINE'
       BuildBatchConfig:
@@ -718,7 +1143,7 @@ Resources:
             - 'BUILD_GENERAL1_LARGE'
           MaximumBuildsAllowed: 2
         ServiceRole: !Sub '${BatchBuildRole.Arn}'
-        TimeoutInMins: 60
+        TimeoutInMins: 120
       Cache:
         Type: 'NO_CACHE'
       ServiceRole: !Sub '${ContainerBuildRole.Arn}'
@@ -734,14 +1159,20 @@ Resources:
             Value: !Sub '${Application}'
           - Name: 'ENVIRONMENT'
             Value: !Sub '${Environment}'
-          - Name: 'BUILD_BUCKET'
-            Value: !Sub '${BuildBucket}'
+          - Name: 'CONTAINER_REPO'
+            Value: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/${EcsRepository}'
           - Name: 'DOCKER_HUB_USER'
             Value: '{{resolve:ssm:/CodePipeline/dockerhub-user:1}}'
           - Name: 'DOCKER_HUB_PASSWORD'
             Value: '{{resolve:ssm:/CodePipeline/dockerhub-password:1}}'
           - Name: 'DOCKER_CLI_EXPERIMENTAL'
             Value: 'enabled'
+          - Name: 'BUILD_BUCKET'
+            Value: !Sub '${BuildBucket}'
+          - Name: 'GDAL_VERSION'
+            Value: !Sub '${GdalVersion}'
+          - Name: 'PROJ_VERSION'
+            Value: !Sub '${ProjVersion}'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
@@ -752,8 +1183,6 @@ Resources:
 
   BuildPipelineRole:
     Type: 'AWS::IAM::Role'
-    DependsOn:
-      - 'CloudFormationDeployRole'
     Properties:
       RoleName: !Sub '${Application}-${Environment}-codepipeline'
       AssumeRolePolicyDocument:
@@ -773,7 +1202,7 @@ Resources:
                 Action:
                   - 'cloudformation:*'
                 Resource:
-                  - !Sub '${AWS::StackId}'
+                  - '*'
               - Effect: 'Allow'
                 Action:
                   - 'codebuild:*Build*'
@@ -787,11 +1216,16 @@ Resources:
                   - !Sub '${CloudFormationDeployRole.Arn}'
               - Effect: 'Allow'
                 Action:
-                  - 's3:GetObject'
+                  - 's3:GetObject*'
+                  - 's3:GetReplicationConfiguration'
+                  - 's3:ListBucket'
                   - 's3:PutObject*'
+                  - 's3:Replicate*'
                 Resource:
+                  - !Sub '${BuildBucket.Arn}'
                   - !Sub '${BuildBucket.Arn}/*'
-                  - !Sub 'arn:${AWS::Partition}:s3:::${WebStack.Outputs.WebBucket}/*'
+                  - !Sub '${WebDistributionBucket.Arn}'
+                  - !Sub '${WebDistributionBucket.Arn}/*'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'
@@ -802,13 +1236,13 @@ Resources:
   
   BuildPipeline:
     Type: 'AWS::CodePipeline::Pipeline'
-    DependsOn:
-      - 'CloudFormationDeployRole'
     Properties:
       Name: !Sub '${Application}-${Environment}'
-      ArtifactStore:
-        Location: !Sub '${BuildBucket}'
-        Type: 'S3'
+      ArtifactStores:
+        - Region: !Sub '${AWS::Region}'
+          ArtifactStore:
+            Location: !Sub '${BuildBucket}'
+            Type: 'S3'
       RestartExecutionOnUpdate: true
       RoleArn: !Sub '${BuildPipelineRole.Arn}'
       Stages:
@@ -828,7 +1262,7 @@ Resources:
                 Branch: !Sub '${Environment}'
                 OAuthToken: '{{resolve:ssm:/CodePipeline/GitHub:1}}'
                 PollForSourceChanges: false
-        - Name: 'CloudFormationBuild'
+        - Name: 'Build'
           Actions:
             - Name: 'CloudFormationBuildAction'
               InputArtifacts:
@@ -844,8 +1278,6 @@ Resources:
               Configuration:
                 ProjectName: !Sub '${CloudFormationBuildProject}'
                 PrimarySource: 'SourceArtifact'
-        - Name: 'ContainerBuild'
-          Actions:
             - Name: 'ContainerBuildAction'
               InputArtifacts:
                 - Name: 'SourceArtifact'
@@ -873,17 +1305,8 @@ Resources:
                 StackName: !Sub '${Application}-${Environment}'
                 Capabilities: 'CAPABILITY_IAM,CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND'
                 RoleArn: !Sub '${CloudFormationDeployRole.Arn}'
-                TemplatePath: 'CloudFormationArtifact::build/packaged.yml'
-                ParameterOverrides: !Sub |-
-                  {
-                    "Application": "${Application}",
-                    "Environment": "${Environment}",
-                    "DomainName": "${DomainName}",
-                    "GitHubOwner": "${GitHubOwner}",
-                    "GitHubRepo": "${GitHubRepo}",
-                    "AlertEmail": "${AlertEmail}",
-                    "AlertPhone": "${AlertPhone}"
-                  }
+                TemplatePath: 'CloudFormationArtifact::build/cfn_main_packaged.yml'
+                TemplateConfiguration: 'CloudFormationArtifact::build/cfn_configuration.json'
         - Name: 'StaticWebContentDeploy'
           Actions:
             - Name: 'StaticWebContentDeployAction'
@@ -895,9 +1318,9 @@ Resources:
                 Provider: 'S3'
                 Version: '1'
               Configuration:
-                BucketName: !Sub '${WebStack.Outputs.WebBucket}'
+                BucketName: !Sub '${WebDistributionBucket}'
                 Extract: 'true'
-                CannedACL: 'public-read'
+                # CannedACL: 'public-read'
                 CacheControl: 'no-cache, no-store, must-revalidate'
       Tags:
         - Key: 'Application'
@@ -909,8 +1332,6 @@ Resources:
   
   BuildPipelineWebhook:
     Type: 'AWS::CodePipeline::Webhook'
-    DependsOn:
-      - 'CloudFormationDeployRole'
     Properties:
       Authentication: 'GITHUB_HMAC'
       AuthenticationConfiguration:
