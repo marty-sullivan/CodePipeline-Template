@@ -33,10 +33,6 @@ Parameters:
     Description: 'The web distribution certificate (must be in us-east-1)'
     Type: 'String'
   
-  UsEast1PipelineArtifactBucket:
-    Description: 'The pipeline artifact bucket for us-east-1'
-    Type: 'String'
-  
   AlertEmail:
     Description: 'Email to which administrative alerts are sent'
     Type: 'String'
@@ -1013,8 +1009,6 @@ Resources:
             Value: !Sub '${GitHubRepo}'
           - Name: 'WEB_DISTRIBUTION_CERTIFICATE'
             Value: !Sub '${WebDistributionCertificate}'
-          - Name: 'US_EAST_1_PIPELINE_ARTIFACT_BUCKET'
-            Value: !Sub '${UsEast1PipelineArtifactBucket}'
           - Name: 'ALERT_EMAIL'
             Value: !Sub '${AlertEmail}'
           - Name: 'ALERT_PHONE'
@@ -1169,10 +1163,6 @@ Resources:
             Value: 'enabled'
           - Name: 'BUILD_BUCKET'
             Value: !Sub '${BuildBucket}'
-          - Name: 'GDAL_VERSION'
-            Value: !Sub '${GdalVersion}'
-          - Name: 'PROJ_VERSION'
-            Value: !Sub '${ProjVersion}'
       Tags:
         - Key: 'Application'
           Value: !Sub '${Application}'

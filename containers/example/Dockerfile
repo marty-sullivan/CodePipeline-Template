@@ -13,6 +13,8 @@ RUN apt-get update -y && \
       build-essential \
       vim && \
     pip3 install --no-cache-dir \
+      cmake && \
+    pip3 install --no-cache-dir \
       awslambdaric \
       boto3 && \
     apt-get autoremove -y \

@@ -87,12 +87,6 @@ else
   
   aws s3 mb s3://$INIT_BUCKET 2> /dev/null
 
-  echo "Creating Pipeline Artifact Bucket in us-east-1..."
-  
-  US_EAST_1_PIPELINE_ARTIFACT_BUCKET="pipeline-artifacts-$AWS_ACCOUNT_ID-us-east-1"
-  
-  aws --region "us-east-1" s3 mb s3://$PIPELINE_ARTIFACT_BUCKET_US_EAST_1 2> /dev/null
-
   echo "Creating Web Distribution Certificate in us-east-1..."
   
   WEB_DISTRIBUTION_CERTIFICATE=$(aws acm request-certificate \
@@ -133,7 +127,6 @@ else
       "GitHubOwner=$GITHUB_OWNER" \
       "GitHubRepo=$GITHUB_REPO" \
       "WebDistributionCertificate=$WEB_DISTRIBUTION_CERTIFICATE" \
-      "UsEast1PipelineArtifactBucket=$US_EAST_1_PIPELINE_ARTIFACT_BUCKET" \
       "AlertEmail=$ALERT_EMAIL" \
       "AlertPhone=$ALERT_PHONE" \
     --tags \
